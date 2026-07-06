@@ -1,0 +1,9 @@
+name: discord
+version: 1.0.0
+description: Envia preview e metadados para canal Discord via webhook
+hooks:
+  - post_publish
+entrypoint: discord_plugin.DiscordPlugin
+platform: discord
+category: publish
+author: ContentOS

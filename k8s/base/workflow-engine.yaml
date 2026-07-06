@@ -1,0 +1,52 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: workflow-engine
+  namespace: contentos
+  labels:
+    app: workflow-engine
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: workflow-engine
+  template:
+    metadata:
+      labels:
+        app: workflow-engine
+    spec:
+      containers:
+        - name: workflow-engine
+          image: contentos/workflow-engine:latest
+          ports:
+            - containerPort: 8001
+          envFrom:
+            - configMapRef:
+                name: contentos-config
+            - secretRef:
+                name: contentos-secrets
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8001
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: workflow-engine
+  namespace: contentos
+spec:
+  selector:
+    app: workflow-engine
+  ports:
+    - port: 8001
+      targetPort: 8001

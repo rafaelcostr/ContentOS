@@ -1,0 +1,9 @@
+name: wordpress
+version: 1.0.0
+description: Cria post WordPress com título, descrição e tags
+hooks:
+  - post_publish
+entrypoint: wordpress_plugin.WordPressPlugin
+platform: wordpress
+category: publish
+author: ContentOS

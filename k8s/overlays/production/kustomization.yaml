@@ -1,0 +1,33 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: contentos
+
+resources:
+  - ../autoscaling-keda
+
+components:
+  - ../../components/ingress
+  - ../../components/external-secrets
+
+patches:
+  - path: patch-configmap.yaml
+  - path: patch-resources.yaml
+  - path: patch-remove-dev-secret.yaml
+
+images:
+  - name: contentos/gateway
+    newName: ghcr.io/contentos/gateway
+    newTag: production
+  - name: contentos/workflow-engine
+    newName: ghcr.io/contentos/workflow-engine
+    newTag: production
+  - name: contentos/agents-worker
+    newName: ghcr.io/contentos/agents-worker
+    newTag: production
+  - name: contentos/ai-gateway
+    newName: ghcr.io/contentos/ai-gateway
+    newTag: production
+  - name: contentos/dashboard
+    newName: ghcr.io/contentos/dashboard
+    newTag: production

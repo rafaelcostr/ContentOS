@@ -1,0 +1,22 @@
+{
+  "items": [
+    {
+      "type": "workflow",
+      "name": "community-shorts-pack",
+      "description": "Template comunitário — hook rápido + publicação (remoto demo)",
+      "version": "0.1.0",
+      "author": "ContentOS Community",
+      "category": "pipeline",
+      "steps": ["research", "hook", "script", "editor", "publisher"]
+    },
+    {
+      "type": "agent",
+      "name": "community-caption-writer",
+      "description": "Agente experimental para legendas sociais (remoto demo)",
+      "version": "0.1.0",
+      "author": "ContentOS Community",
+      "category": "creative",
+      "queue": "contentos.subtitle"
+    }
+  ]
+}

@@ -1,0 +1,35 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: contentos-config
+  namespace: contentos
+data:
+  APP_NAME: ContentOS
+  APP_ENV: production
+  DEBUG: "false"
+  TEXT_PROVIDER: ollama
+  SPEECH_PROVIDER: piper
+  SUBTITLE_PROVIDER: local
+  PUBLISH_MODE: dry_run
+  ENABLED_PLATFORMS: tiktok,youtube,instagram
+  OLLAMA_BASE_URL: http://ollama:11434
+  OLLAMA_MODEL: qwen2.5:7b
+  PIPER_URL: http://piper:5000
+  WHISPER_URL: http://whisper:8080
+  MINIO_ENDPOINT: minio:9000
+  MINIO_BUCKET: contentos
+  MINIO_SECURE: "false"
+  WORKFLOW_CALLBACK_URL: http://workflow-engine:8001/internal/callback
+  CORS_ORIGINS: http://localhost:3000
+  # V2 — AI Gateway & workflow templates
+  USE_AI_GATEWAY: "true"
+  AI_GATEWAY_URL: http://ai-gateway:8020
+  AI_GATEWAY_FALLBACK: "true"
+  DEFAULT_WORKFLOW: v1-default
+  USE_AI_CACHE: "true"
+  EVENT_STREAM_KEY: contentos:stream:events
+  ENABLE_ANALYTICS_AI: "true"
+  ENABLE_THUMBNAIL: "false"
+  ENABLE_V2_CLIP_PIPELINE: "false"
+  CONTENT_SOURCES_ENABLED: local_library,own_library
+  PLUGINS_ROOT: /app/plugins

@@ -1,0 +1,9 @@
+name: youtube
+version: 1.0.0
+description: YouTube Shorts — metadados e publicação
+hooks:
+  - post_publish
+platform: youtube
+builtin: true
+category: publish
+author: ContentOS

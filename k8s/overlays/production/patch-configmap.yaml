@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: contentos-config
+  namespace: contentos
+data:
+  APP_ENV: production
+  DEBUG: "false"
+  PUBLISH_MODE: dry_run
+  PROMETHEUS_METRICS_ENABLED: "true"
+  OTEL_ENABLED: "true"
+  QUALITY_MIN_SCORE: "6"
+  VIDEO_REVIEW_MIN_SCORE: "8"

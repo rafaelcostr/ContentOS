@@ -1,0 +1,190 @@
+# Celery worker pools — scale per queue group (Tier E4)
+# Requires KEDA in cluster for queue-based autoscaling (see keda-scaledobjects.yaml)
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: agents-worker-research
+  namespace: contentos
+  labels:
+    app: agents-worker
+    pool: research
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: agents-worker
+      pool: research
+  template:
+    metadata:
+      labels:
+        app: agents-worker
+        pool: research
+    spec:
+      containers:
+        - name: worker
+          image: contentos/agents-worker:latest
+          command:
+            - celery
+            - -A
+            - contentos_agents.worker
+            - worker
+            - -l
+            - info
+            - -Q
+            - contentos.research
+            - -c
+            - "2"
+          envFrom:
+            - configMapRef:
+                name: contentos-config
+            - secretRef:
+                name: contentos-secrets
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "500m"
+            limits:
+              memory: "2Gi"
+              cpu: "2000m"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: agents-worker-script
+  namespace: contentos
+  labels:
+    app: agents-worker
+    pool: script
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: agents-worker
+      pool: script
+  template:
+    metadata:
+      labels:
+        app: agents-worker
+        pool: script
+    spec:
+      containers:
+        - name: worker
+          image: contentos/agents-worker:latest
+          command:
+            - celery
+            - -A
+            - contentos_agents.worker
+            - worker
+            - -l
+            - info
+            - -Q
+            - contentos.script,contentos.script_review,contentos.hook
+            - -c
+            - "2"
+          envFrom:
+            - configMapRef:
+                name: contentos-config
+            - secretRef:
+                name: contentos-secrets
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "500m"
+            limits:
+              memory: "2Gi"
+              cpu: "2000m"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: agents-worker-editor
+  namespace: contentos
+  labels:
+    app: agents-worker
+    pool: editor
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: agents-worker
+      pool: editor
+  template:
+    metadata:
+      labels:
+        app: agents-worker
+        pool: editor
+    spec:
+      containers:
+        - name: worker
+          image: contentos/agents-worker:latest
+          command:
+            - celery
+            - -A
+            - contentos_agents.worker
+            - worker
+            - -l
+            - info
+            - -Q
+            - contentos.editor
+            - -c
+            - "4"
+          envFrom:
+            - configMapRef:
+                name: contentos-config
+            - secretRef:
+                name: contentos-secrets
+          resources:
+            requests:
+              memory: "1Gi"
+              cpu: "1000m"
+            limits:
+              memory: "4Gi"
+              cpu: "4000m"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: agents-worker-general
+  namespace: contentos
+  labels:
+    app: agents-worker
+    pool: general
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: agents-worker
+      pool: general
+  template:
+    metadata:
+      labels:
+        app: agents-worker
+        pool: general
+    spec:
+      containers:
+        - name: worker
+          image: contentos/agents-worker:latest
+          command:
+            - celery
+            - -A
+            - contentos_agents.worker
+            - worker
+            - -l
+            - info
+            - -Q
+            - contentos.scene,contentos.takes,contentos.voice,contentos.subtitle,contentos.quality,contentos.video_review,contentos.publisher,contentos.thumbnail,contentos.analytics
+            - -c
+            - "2"
+          envFrom:
+            - configMapRef:
+                name: contentos-config
+            - secretRef:
+                name: contentos-secrets
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "500m"
+            limits:
+              memory: "2Gi"
+              cpu: "2000m"

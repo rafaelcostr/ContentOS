@@ -1,0 +1,17 @@
+# Optional GPU acceleration for Ollama and Whisper
+# Usage: docker compose -f docker/docker-compose.yml -f docker/docker-compose.gpu.yml up -d
+
+services:
+  ollama:
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+  whisper:
+    environment:
+      WHISPER_DEVICE: cuda
+      WHISPER_COMPUTE_TYPE: float16

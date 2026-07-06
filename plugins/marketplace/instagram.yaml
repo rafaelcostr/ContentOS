@@ -1,0 +1,9 @@
+name: instagram
+version: 1.0.0
+description: Instagram Reels — legendas e hashtags
+hooks:
+  - post_publish
+platform: instagram
+builtin: true
+category: publish
+author: ContentOS

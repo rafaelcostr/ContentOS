@@ -1,0 +1,97 @@
+# KEDA ScaledObjects — scale worker pools by Celery queue depth (Tier E4)
+
+apiVersion: keda.sh/v1alpha1
+kind: TriggerAuthentication
+metadata:
+  name: redis-trigger-auth
+  namespace: contentos
+spec:
+  secretTargetRef: []
+---
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: agents-worker-research-scaler
+  namespace: contentos
+spec:
+  scaleTargetRef:
+    name: agents-worker-research
+  pollingInterval: 15
+  cooldownPeriod: 120
+  minReplicaCount: 1
+  maxReplicaCount: 8
+  triggers:
+    - type: redis
+      authenticationRef:
+        name: redis-trigger-auth
+      metadata:
+        address: redis:6379
+        listName: contentos.research
+        listLength: "3"
+        databaseIndex: "0"
+---
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: agents-worker-script-scaler
+  namespace: contentos
+spec:
+  scaleTargetRef:
+    name: agents-worker-script
+  pollingInterval: 15
+  cooldownPeriod: 120
+  minReplicaCount: 1
+  maxReplicaCount: 6
+  triggers:
+    - type: redis
+      authenticationRef:
+        name: redis-trigger-auth
+      metadata:
+        address: redis:6379
+        listName: contentos.script
+        listLength: "3"
+        databaseIndex: "0"
+---
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: agents-worker-editor-scaler
+  namespace: contentos
+spec:
+  scaleTargetRef:
+    name: agents-worker-editor
+  pollingInterval: 15
+  cooldownPeriod: 180
+  minReplicaCount: 1
+  maxReplicaCount: 6
+  triggers:
+    - type: redis
+      authenticationRef:
+        name: redis-trigger-auth
+      metadata:
+        address: redis:6379
+        listName: contentos.editor
+        listLength: "2"
+        databaseIndex: "0"
+---
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: agents-worker-general-scaler
+  namespace: contentos
+spec:
+  scaleTargetRef:
+    name: agents-worker-general
+  pollingInterval: 15
+  cooldownPeriod: 120
+  minReplicaCount: 2
+  maxReplicaCount: 10
+  triggers:
+    - type: redis
+      authenticationRef:
+        name: redis-trigger-auth
+      metadata:
+        address: redis:6379
+        listName: contentos.publisher
+        listLength: "5"
+        databaseIndex: "0"

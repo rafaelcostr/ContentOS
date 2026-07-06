@@ -1,0 +1,41 @@
+FROM python:3.13-slim
+
+ARG PIPER_VERSION=2023.11.14-2
+ARG PIPER_VOICE=pt_BR-faber-medium
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl ca-certificates ffmpeg \
+    && rm -rf /var/lib/apt/lists/*
+
+# Piper binary (linux x86_64)
+RUN mkdir -p /opt/piper \
+    && curl -fsSL -o /tmp/piper.tar.gz \
+    "https://github.com/rhasspy/piper/releases/download/${PIPER_VERSION}/piper_linux_x86_64.tar.gz" \
+    && tar -xzf /tmp/piper.tar.gz -C /opt/piper \
+    && ln -sf /opt/piper/piper /usr/local/bin/piper \
+    && rm /tmp/piper.tar.gz
+
+ENV LD_LIBRARY_PATH=/opt/piper
+
+# Voice model (PT-BR)
+RUN mkdir -p /models \
+    && curl -fsSL -o "/models/${PIPER_VOICE}.onnx" \
+    "https://huggingface.co/rhasspy/piper-voices/resolve/v1.0.0/pt/pt_BR/faber/medium/${PIPER_VOICE}.onnx" \
+    && curl -fsSL -o "/models/${PIPER_VOICE}.onnx.json" \
+    "https://huggingface.co/rhasspy/piper-voices/resolve/v1.0.0/pt/pt_BR/faber/medium/${PIPER_VOICE}.onnx.json"
+
+WORKDIR /app
+COPY docker/services/piper/requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+COPY docker/services/piper/main.py .
+
+ENV PIPER_BIN=/usr/local/bin/piper
+ENV PIPER_MODEL_DIR=/models
+ENV PIPER_VOICE=${PIPER_VOICE}
+
+EXPOSE 5000
+
+HEALTHCHECK --interval=15s --timeout=10s --retries=5 --start-period=20s \
+    CMD curl -f http://localhost:5000/health || exit 1
+
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "5000"]

@@ -1,0 +1,28 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: contentos-staging
+
+resources:
+  - ../autoscaling-keda
+
+patches:
+  - path: patch-configmap.yaml
+  - path: patch-replicas.yaml
+
+images:
+  - name: contentos/gateway
+    newName: ghcr.io/contentos/gateway
+    newTag: staging
+  - name: contentos/workflow-engine
+    newName: ghcr.io/contentos/workflow-engine
+    newTag: staging
+  - name: contentos/agents-worker
+    newName: ghcr.io/contentos/agents-worker
+    newTag: staging
+  - name: contentos/ai-gateway
+    newName: ghcr.io/contentos/ai-gateway
+    newTag: staging
+  - name: contentos/dashboard
+    newName: ghcr.io/contentos/dashboard
+    newTag: staging

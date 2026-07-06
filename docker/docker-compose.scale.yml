@@ -1,0 +1,24 @@
+# Scale workers per queue in production
+# Usage: docker compose -f docker/docker-compose.yml -f docker/docker-compose.scale.yml up -d
+
+services:
+  agents-research:
+    extends:
+      file: docker-compose.yml
+      service: agents-worker
+    command: celery -A contentos_agents.worker worker -l info -Q contentos.research -c 2
+
+  agents-script:
+    extends:
+      file: docker-compose.yml
+      service: agents-worker
+    command: celery -A contentos_agents.worker worker -l info -Q contentos.script -c 2
+
+  agents-editor:
+    extends:
+      file: docker-compose.yml
+      service: agents-worker
+    command: celery -A contentos_agents.worker worker -l info -Q contentos.editor -c 4
+
+  agents-worker:
+    command: celery -A contentos_agents.worker worker -l info -Q contentos.scene,contentos.takes,contentos.voice,contentos.subtitle,contentos.quality,contentos.publisher -c 2

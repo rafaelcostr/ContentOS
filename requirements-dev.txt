@@ -1,0 +1,36 @@
+# Development & CI dependencies
+-e packages/shared
+-e packages/ai-core
+-e packages/ai-client
+-e packages/prompts
+-e packages/models[postgres]
+-e packages/memory[postgres]
+-e packages/cache
+-e packages/cost[postgres]
+-e packages/events[postgres]
+-e packages/analytics-ai[postgres]
+-e packages/plugins-core[postgres]
+-e packages/content-sources[postgres]
+-e packages/database
+-e packages/storage
+-e packages/intelligence[postgres]
+
+# Backend (API integration tests)
+fastapi>=0.115.0
+uvicorn[standard]>=0.32.0
+python-jose[cryptography]>=3.3.0
+passlib[bcrypt]>=1.7.4
+bcrypt>=4.0.0
+pydantic-settings>=2.6.0
+email-validator>=2.2.0
+python-multipart>=0.0.18
+alembic>=1.14.0
+psutil>=6.0.0
+redis>=5.0.0
+celery[redis]>=5.4.0
+
+# Test
+pytest>=8.3.0
+pytest-asyncio>=0.24.0
+httpx>=0.28.0
+ruff>=0.8.0

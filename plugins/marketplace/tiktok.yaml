@@ -1,0 +1,9 @@
+name: tiktok
+version: 1.0.0
+description: Publicação TikTok — vídeos verticais até 60s
+hooks:
+  - post_publish
+platform: tiktok
+builtin: true
+category: publish
+author: ContentOS

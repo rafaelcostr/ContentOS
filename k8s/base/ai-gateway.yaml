@@ -1,0 +1,59 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ai-gateway
+  namespace: contentos
+  labels:
+    app: ai-gateway
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ai-gateway
+  template:
+    metadata:
+      labels:
+        app: ai-gateway
+    spec:
+      containers:
+        - name: ai-gateway
+          image: contentos/ai-gateway:latest
+          ports:
+            - containerPort: 8020
+          envFrom:
+            - configMapRef:
+                name: contentos-config
+            - secretRef:
+                name: contentos-secrets
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8020
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8020
+            initialDelaySeconds: 20
+            periodSeconds: 30
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ai-gateway
+  namespace: contentos
+spec:
+  selector:
+    app: ai-gateway
+  ports:
+    - port: 8020
+      targetPort: 8020
+  type: ClusterIP

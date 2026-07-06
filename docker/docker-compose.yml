@@ -1,0 +1,241 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-contentos}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-contentos_secret}
+      POSTGRES_DB: ${POSTGRES_DB:-contentos}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U contentos"]
+      interval: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      retries: 5
+
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-contentos}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-contentos_secret}
+    volumes:
+      - minio_data:/data
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+
+  # ── AI Stack (Fase 2 — 100% local) ──────────────────────────────────────
+
+  ollama:
+    image: ollama/ollama:latest
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    healthcheck:
+      test: ["CMD-SHELL", "ollama list || exit 1"]
+      interval: 10s
+      timeout: 30s
+      retries: 10
+      start_period: 30s
+
+  ollama-init:
+    image: ollama/ollama:latest
+    depends_on:
+      ollama:
+        condition: service_healthy
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen2.5:7b}
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        echo "Pulling model: $${OLLAMA_MODEL}"
+        ollama pull "$${OLLAMA_MODEL}"
+        echo "Model ready: $${OLLAMA_MODEL}"
+    restart: "no"
+
+  piper:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.piper
+      args:
+        PIPER_VOICE: ${PIPER_VOICE:-pt_BR-faber-medium}
+    ports:
+      - "5000:5000"
+    environment:
+      PIPER_VOICE: ${PIPER_VOICE:-pt_BR-faber-medium}
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:5000/health | grep -qE '\"model_ready\"\\s*:\\s*true'"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  whisper:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.whisper
+    ports:
+      - "8080:8080"
+    environment:
+      WHISPER_MODEL: ${WHISPER_MODEL:-large-v3}
+      WHISPER_DEVICE: ${WHISPER_DEVICE:-cpu}
+      WHISPER_COMPUTE_TYPE: ${WHISPER_COMPUTE_TYPE:-int8}
+    volumes:
+      - whisper_cache:/root/.cache/huggingface
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8080/health | grep -qE '\"loaded\"\\s*:\\s*true'"]
+      interval: 30s
+      timeout: 15s
+      retries: 15
+      start_period: 600s
+
+  # ── AI Gateway (V2.1) ────────────────────────────────────────────────────
+
+  ai-gateway:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.ai-gateway
+    ports:
+      - "8020:8020"
+    env_file:
+      - ../.env
+    environment:
+      - USE_AI_GATEWAY=true
+      - DATABASE_URL=${DATABASE_URL:-postgresql+asyncpg://contentos:contentos_secret@postgres:5432/contentos}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      ollama-init:
+        condition: service_completed_successfully
+      piper:
+        condition: service_healthy
+      whisper:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8020/health')\""]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # ── ContentOS Core ───────────────────────────────────────────────────────
+
+  workflow-engine:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.workflow
+    ports:
+      - "8001:8001"
+    env_file:
+      - ../.env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  gateway:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.gateway
+    command: uvicorn contentos_gateway.main:app --host 0.0.0.0 --port 8000 --reload
+    ports:
+      - "8000:8000"
+    env_file:
+      - ../.env
+    environment:
+      - PROMPTS_DIR=/app/packages/prompts/prompts
+      - PROMPTS_OVERRIDE_DIR=/data/prompts
+      - USE_AI_CACHE=${USE_AI_CACHE:-true}
+      - CACHE_REDIS_URL=redis://redis:6379/2
+    volumes:
+      - prompts_data:/data/prompts
+    depends_on:
+      - workflow-engine
+      - postgres
+      - redis
+      - piper
+      - whisper
+
+  agents-worker:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.agent
+    env_file:
+      - ../.env
+    environment:
+      - WORKFLOW_CALLBACK_URL=http://workflow-engine:8001/internal/callback
+      - USE_AI_GATEWAY=true
+      - AI_GATEWAY_URL=http://ai-gateway:8020
+      - AI_GATEWAY_FALLBACK=${AI_GATEWAY_FALLBACK:-true}
+      - PROMPTS_DIR=/app/packages/prompts/prompts
+      - PROMPTS_OVERRIDE_DIR=/data/prompts
+      - USE_AI_CACHE=${USE_AI_CACHE:-true}
+      - CACHE_REDIS_URL=redis://redis:6379/2
+    volumes:
+      - prompts_data:/data/prompts
+    depends_on:
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_started
+      workflow-engine:
+        condition: service_started
+      ai-gateway:
+        condition: service_healthy
+      ollama-init:
+        condition: service_completed_successfully
+      piper:
+        condition: service_healthy
+      whisper:
+        condition: service_healthy
+
+  flower:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.workflow
+    command: celery -A contentos_workflow.tasks.celery_app flower --port=5555
+    ports:
+      - "5555:5555"
+    env_file:
+      - ../.env
+    depends_on:
+      - redis
+      - agents-worker
+
+  dashboard:
+    build:
+      context: ../apps/dashboard
+      dockerfile: Dockerfile.dev
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+      - NEXT_PUBLIC_WS_URL=ws://localhost:8000
+    volumes:
+      - ../apps/dashboard:/app
+      - /app/node_modules
+      - /app/.next
+    command: npm run dev
+    depends_on:
+      - gateway
+
+volumes:
+  postgres_data:
+  minio_data:
+  ollama_data:
+  whisper_cache:
+  prompts_data:

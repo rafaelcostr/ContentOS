@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: contentos-config
+  namespace: contentos
+data:
+  APP_ENV: staging
+  DEBUG: "true"
+  PUBLISH_MODE: dry_run
+  OTEL_ENABLED: "true"
+  PROMETHEUS_METRICS_ENABLED: "true"

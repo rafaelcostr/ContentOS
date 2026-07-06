@@ -1,0 +1,43 @@
+[project]
+name = "contentos"
+version = "0.1.0"
+requires-python = ">=3.12"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+pythonpath = [
+    "packages/shared/src",
+    "packages/ai-core/src",
+    "packages/ai-client/src",
+    "packages/prompts/src",
+    "packages/models/src",
+    "packages/memory/src",
+    "packages/cache/src",
+    "packages/cost/src",
+    "packages/events/src",
+    "packages/analytics-ai/src",
+    "packages/plugins-core/src",
+    "packages/content-sources/src",
+    "packages/database/src",
+    "packages/storage/src",
+    "apps/backend/src",
+    "services/workflow-engine/src",
+    "services/agents-worker/src",
+    "services/ai-gateway/src",
+]
+markers = [
+    "integration: tests requiring PostgreSQL",
+]
+
+[tool.ruff]
+line-length = 120
+target-version = "py313"
+src = ["packages", "apps", "services", "tests", "scripts"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W"]
+ignore = ["E501"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["F401", "F811"]

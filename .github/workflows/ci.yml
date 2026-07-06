@@ -1,0 +1,163 @@
+name: ContentOS CI
+
+on:
+  push:
+    branches: [main, master, develop]
+  pull_request:
+    branches: [main, master]
+
+env:
+  PYTHON_VERSION: "3.13"
+  NODE_VERSION: "20"
+
+jobs:
+  lint-python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Install Ruff
+        run: pip install ruff
+      - name: Ruff check
+        run: ruff check packages apps/backend/src services tests scripts
+      - name: Ruff format check
+        run: ruff format --check packages apps/backend/src services tests scripts
+
+  test-unit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Install dependencies
+        run: pip install -r requirements-dev.txt
+      - name: Unit tests
+        run: pytest tests/ -v -m "not integration" --ignore=tests/test_api_integration.py
+
+  test-v2:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Install dependencies
+        run: pip install -r requirements-dev.txt
+      - name: V2 package tests
+        run: |
+          pytest tests/test_workflow_templates.py \
+            tests/test_event_bus.py \
+            tests/test_analytics_ai.py \
+            tests/test_plugin_marketplace.py \
+            tests/test_content_sources.py \
+            tests/test_asset_manager_v2.py \
+            tests/test_pipeline_v2.py \
+            tests/test_ai_gateway.py -v
+
+  test-integration:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: contentos
+          POSTGRES_PASSWORD: contentos_secret
+          POSTGRES_DB: contentos
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U contentos"
+          --health-interval 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql+asyncpg://contentos:contentos_secret@localhost:5432/contentos
+      JWT_SECRET: ci-test-secret
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Install dependencies
+        run: pip install -r requirements-dev.txt
+      - name: API integration tests
+        run: pytest tests/test_api_integration.py -v
+
+  lint-dashboard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - name: Install & lint
+        working-directory: apps/dashboard
+        run: |
+          npm install
+          npm run lint
+
+  build-dashboard:
+    runs-on: ubuntu-latest
+    needs: [lint-dashboard]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - name: Build
+        working-directory: apps/dashboard
+        run: |
+          npm install
+          npm run build
+
+  e2e-playwright:
+    runs-on: ubuntu-latest
+    needs: [build-dashboard]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - name: Install dependencies
+        working-directory: apps/dashboard
+        run: npm install
+      - name: Install Playwright browsers
+        working-directory: apps/dashboard
+        run: npx playwright install chromium --with-deps
+      - name: Run Playwright E2E
+        working-directory: apps/dashboard
+        run: npm run test:e2e
+
+  docker-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Build Gateway
+        run: docker build -f docker/Dockerfile.gateway -t contentos/gateway:ci .
+      - name: Build Workflow Engine
+        run: docker build -f docker/Dockerfile.workflow -t contentos/workflow-engine:ci .
+      - name: Build Agents Worker
+        run: docker build -f docker/Dockerfile.agent -t contentos/agents-worker:ci .
+      - name: Build AI Gateway
+        run: docker build -f docker/Dockerfile.ai-gateway -t contentos/ai-gateway:ci .
+      - name: Build Piper
+        run: docker build -f docker/Dockerfile.piper -t contentos/piper:ci .
+
+  k8s-validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install kubectl
+        uses: azure/setup-kubectl@v4
+      - name: Validate K8s manifests
+        run: |
+          kubectl kustomize k8s/base > /dev/null
+          kubectl kustomize k8s/overlays/autoscaling-keda > /dev/null
+          kubectl kustomize k8s/overlays/autoscaling-cpu > /dev/null
+          kubectl kustomize k8s/overlays/staging > /dev/null
+          kubectl kustomize k8s/overlays/production > /dev/null
+          echo "Kustomize build OK"

@@ -1,0 +1,50 @@
+FROM python:3.13-slim
+
+RUN apt-get update && apt-get install -y --no-install-recommends ffmpeg && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+COPY packages/shared /app/packages/shared
+COPY packages/ai-core /app/packages/ai-core
+COPY packages/ai-client /app/packages/ai-client
+COPY packages/prompts /app/packages/prompts
+COPY packages/models /app/packages/models
+COPY packages/memory /app/packages/memory
+COPY packages/cache /app/packages/cache
+COPY packages/cost /app/packages/cost
+COPY packages/events /app/packages/events
+COPY packages/analytics-ai /app/packages/analytics-ai
+COPY packages/plugins-core /app/packages/plugins-core
+COPY packages/content-sources /app/packages/content-sources
+COPY packages/database /app/packages/database
+COPY packages/storage /app/packages/storage
+COPY packages/intelligence /app/packages/intelligence
+COPY plugins /app/plugins
+COPY services/workflow-engine /app/services/workflow-engine
+COPY services/agents-worker /app/services/agents-worker
+
+RUN pip install --no-cache-dir \
+    -e /app/packages/shared \
+    -e /app/packages/ai-core \
+    -e /app/packages/ai-client \
+    -e /app/packages/prompts \
+    -e /app/packages/models[postgres] \
+    -e /app/packages/memory[postgres] \
+    -e /app/packages/cache \
+    -e /app/packages/cost[postgres] \
+    -e /app/packages/events[postgres] \
+    -e /app/packages/analytics-ai[postgres] \
+    -e /app/packages/plugins-core[postgres] \
+    -e /app/packages/content-sources[postgres] \
+    -e /app/packages/database \
+    -e /app/packages/storage \
+    -e /app/packages/intelligence[postgres] \
+    celery[redis] redis httpx openai minio Pillow psycopg2-binary \
+    opentelemetry-api opentelemetry-sdk opentelemetry-exporter-otlp-proto-grpc opentelemetry-instrumentation-httpx
+
+ENV PYTHONPATH=/app/services/workflow-engine/src:/app/services/agents-worker/src:/app/packages/shared/src:/app/packages/ai-core/src:/app/packages/ai-client/src:/app/packages/prompts/src:/app/packages/models/src:/app/packages/memory/src:/app/packages/cache/src:/app/packages/cost/src:/app/packages/events/src:/app/packages/analytics-ai/src:/app/packages/plugins-core/src:/app/packages/content-sources/src:/app/packages/database/src:/app/packages/storage/src:/app/packages/intelligence/src
+ENV PLUGINS_ROOT=/app/plugins
+ENV PROMPTS_DIR=/app/packages/prompts/prompts
+ENV PROMPTS_OVERRIDE_DIR=/data/prompts
+
+CMD celery -A contentos_agents.worker worker -l info -Q contentos.trend_intelligence,contentos.research,contentos.hook,contentos.script,contentos.script_review,contentos.emotion,contentos.content_intelligence,contentos.scene,contentos.storyboard,contentos.scene_director,contentos.clip_research,contentos.asset_collector,contentos.asset_index,contentos.takes,contentos.voice,contentos.subtitle,contentos.editor,contentos.quality,contentos.video_review,contentos.publisher,contentos.multi_content,contentos.multi_content_video,contentos.thumbnail,contentos.analytics,contentos.learning
