@@ -50,6 +50,13 @@ AGENT_CATALOG: list[dict[str, str]] = [
         "tier": "v3",
     },
     {
+        "name": "content_score",
+        "queue": "contentos.content_score",
+        "description": "Calcula nota geral 0-100 a partir de qualidade, retenção, emoção e sinais virais",
+        "category": "quality",
+        "tier": "v4",
+    },
+    {
         "name": "content_intelligence",
         "queue": "contentos.content_intelligence",
         "description": "Score viral + sugestões de reuso antes das cenas (V4)",
@@ -62,6 +69,13 @@ AGENT_CATALOG: list[dict[str, str]] = [
         "description": "Nota criativa do vídeo e sugestões de melhoria",
         "category": "quality",
         "tier": "v3",
+    },
+    {
+        "name": "auto_retry",
+        "queue": "contentos.auto_retry",
+        "description": "Checkpoint de retry criativo com orçamento e rewind controlados pelo workflow",
+        "category": "quality",
+        "tier": "v4",
     },
     {
         "name": "scene",
@@ -96,6 +110,20 @@ AGENT_CATALOG: list[dict[str, str]] = [
         "name": "asset_collector",
         "queue": "contentos.asset_collector",
         "description": "Coleta e indexa clips (V2)",
+        "category": "assets",
+        "tier": "v2",
+    },
+    {
+        "name": "media_analyze",
+        "queue": "contentos.media_analyze",
+        "description": "Análise visual IA + embeddings para biblioteca de assets (V5.0.3)",
+        "category": "assets",
+        "tier": "v5",
+    },
+    {
+        "name": "asset_search",
+        "queue": "contentos.asset_search",
+        "description": "Busca os melhores assets indexados para cada cena",
         "category": "assets",
         "tier": "v2",
     },
@@ -175,5 +203,19 @@ AGENT_CATALOG: list[dict[str, str]] = [
         "description": "Aprendizado pós-pipeline → Memory + KB (V4.2)",
         "category": "intelligence",
         "tier": "v4",
+    },
+    {
+        "name": "knowledge_base",
+        "queue": "contentos.knowledge_base",
+        "description": "Indexa artefatos do pipeline na base permanente e atualiza o content graph",
+        "category": "intelligence",
+        "tier": "v4",
+    },
+    {
+        "name": "creative_memory",
+        "queue": "contentos.creative_memory",
+        "description": "Merge KB + Learning em memória criativa unificada (V5.2.5)",
+        "category": "intelligence",
+        "tier": "v5",
     },
 ]

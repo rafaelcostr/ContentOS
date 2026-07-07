@@ -2,10 +2,22 @@
 
 from __future__ import annotations
 
+from contentos_memory.domain.dna_v2 import CONTENT_ANGLE_MOVEMENT, CONTENT_ANGLE_PACE
+
 from contentos_shared.payload_utils import coerce_dict
 
 PACING_LEVELS = ("slow", "medium", "fast")
-MOVEMENTS = ("static", "zoom-in", "zoom-out", "pan-left", "pan-right", "ken-burns")
+MOVEMENTS = (
+    "static",
+    "zoom-in",
+    "zoom-out",
+    "pan-left",
+    "pan-right",
+    "ken-burns",
+    "speed-ramp-up",
+    "speed-ramp-down",
+    "slow-mo",
+)
 TRANSITIONS = ("cut", "fade", "dissolve")
 FRAMINGS = ("close-up", "medium", "wide")
 CROP_BIASES = ("top", "center", "bottom")
@@ -23,6 +35,11 @@ _MOVEMENT_ZOOM = {
 _PAN_X = {
     "pan-left": "max(0\\,iw/2-(iw/zoom/2)-on*1.5)",
     "pan-right": "min(iw-iw/zoom\\,iw/2-(iw/zoom/2)+on*1.5)",
+}
+_MOVEMENT_SPEED: dict[str, tuple[float, float | None]] = {
+    "speed-ramp-up": (1.0, 1.35),
+    "speed-ramp-down": (1.25, 0.85),
+    "slow-mo": (0.75, None),
 }
 
 
@@ -56,8 +73,14 @@ def _fade_for_transition(transition: str, pacing: str) -> tuple[float, float]:
     return fade_in, fade_out
 
 
-def frame_to_directive(frame: dict, *, pacing: str) -> dict:
-    movement = _pick(frame.get("movement", ""), MOVEMENTS, "ken-burns")
+def frame_to_directive(frame: dict, *, pacing: str, content_angle: str = "") -> dict:
+    raw_movement = str(frame.get("movement", "") or "").lower().strip().replace("_", "-")
+    if raw_movement and raw_movement in MOVEMENTS:
+        movement = raw_movement
+    elif content_angle and content_angle in CONTENT_ANGLE_MOVEMENT:
+        movement = CONTENT_ANGLE_MOVEMENT[content_angle]
+    else:
+        movement = _pick(frame.get("movement", ""), MOVEMENTS, "ken-burns")
     transition = _pick(frame.get("transition", ""), TRANSITIONS, "fade")
     framing = _pick(frame.get("framing", ""), FRAMINGS, "medium")
     zoom_enabled, zoom_max, zoom_rate = _MOVEMENT_ZOOM.get(movement, _MOVEMENT_ZOOM["ken-burns"])
@@ -83,6 +106,11 @@ def frame_to_directive(frame: dict, *, pacing: str) -> dict:
     }
     if movement in _PAN_X:
         directive["pan_x_expr"] = _PAN_X[movement]
+    if movement in _MOVEMENT_SPEED:
+        start, end = _MOVEMENT_SPEED[movement]
+        directive["playback_speed"] = round(start, 3)
+        if end is not None:
+            directive["speed_ramp_end"] = round(end, 3)
     return directive
 
 
@@ -109,20 +137,28 @@ def build_director_plan(
     storyboard: dict | None,
     scenes: list[dict],
     emotion: dict | None = None,
+    content_angle: str = "",
 ) -> dict:
     """Translate storyboard frames + emotion into editor-ready render directives."""
     board = coerce_dict(storyboard)
     emotion_data = coerce_dict(emotion)
     pacing, energy = _pacing_from_emotion(emotion_data)
+    angle = str(content_angle or "").strip().lower().replace("_", "-")
+    if angle in CONTENT_ANGLE_PACE and energy == 5:
+        pacing = CONTENT_ANGLE_PACE[angle]
 
     frames = board.get("frames")
     if not isinstance(frames, list) or not frames:
         frames = _frames_from_scenes(scenes)
 
-    directives = [frame_to_directive(coerce_dict(f), pacing=pacing) for f in frames]
+    directives = [
+        frame_to_directive(coerce_dict(f), pacing=pacing, content_angle=angle) for f in frames
+    ]
     if scenes and len(directives) < len(scenes):
         extra = _frames_from_scenes(scenes[len(directives) :])
-        directives.extend(frame_to_directive(coerce_dict(f), pacing=pacing) for f in extra)
+        directives.extend(
+            frame_to_directive(coerce_dict(f), pacing=pacing, content_angle=angle) for f in extra
+        )
 
     default_fade = _TRANSITION_FADE["fade"]
     if pacing == "fast":
@@ -135,6 +171,7 @@ def build_director_plan(
         "energy": energy,
         "default_fade": round(default_fade, 3),
         "overall_style": str(board.get("overall_style") or "vertical dinâmico"),
+        "content_angle": angle,
         "segments": directives[: max(len(scenes), 1)],
     }
 

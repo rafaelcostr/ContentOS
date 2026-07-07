@@ -23,7 +23,8 @@ WorkflowEngine / Agents
 | Domain (V1/V2) | `research.finished`, `script.finished`, `voice.generated`, … |
 | Domain (V2 media) | `clip_research.finished`, `assets.ready`, `asset_index.finished`, `takes.finished` |
 | Domain (V3) | `trend_intelligence.finished`, `hook.finished`, `script_review.finished`, `emotion.finished`, `storyboard.finished`, `scene_director.finished`, `video_review.finished` |
-| Creative retry | `creative_retry.started`, `creative_retry.exhausted` |
+| Creative retry | `auto_retry.finished`, `creative_retry.started`, `creative_retry.exhausted` |
+| Knowledge Base | `knowledge_base.indexed` |
 
 Workflow emits V1 step events. Agents emit V2 domain events on callback (e.g. `research.finished`).
 
@@ -60,7 +61,7 @@ Workflow emits V1 step events. Agents emit V2 domain events on callback (e.g. `r
 
 ### Step → domain event (`STEP_TO_DOMAIN_EVENT`)
 
-Todos os steps de `v2-dynamic` (14) estão mapeados:
+Os steps de `v2-dynamic` (16) e `factory-full` (31) possuem mapeamento para evento de domínio:
 
 | Step | Evento |
 |------|--------|
@@ -77,14 +78,25 @@ Todos os steps de `v2-dynamic` (14) estão mapeados:
 | clip_research | `clip_research.finished` |
 | asset_collector | `assets.ready` |
 | asset_index | `asset_index.finished` |
+| media_analyze | `media_analyze.finished` |
+| asset_search | `asset_search.finished` |
 | takes | `takes.finished` |
 | voice | `voice.generated` |
 | subtitle | `subtitle.created` |
 | editor | `editor.finished` |
-| quality | `quality.approved` (falha → `quality.rejected`) |
+| quality | `quality.approved` (falha -> `quality.rejected`) |
 | publisher | `publisher.finished` |
 | thumbnail | `thumbnail.created` |
 | analytics | `analytics.processed` |
+| retention | `retention.analyzed` |
+| auto_retry | `auto_retry.finished` |
+| content_score | `content_score.computed` |
+| ai_director | `director.decided` |
+| content_intelligence | `content_intelligence.finished` |
+| learning | `learning.recorded` |
+| knowledge_base | `knowledge_base.indexed` |
+| creative_memory | `creative_memory.merged` |
+| seo | `seo.optimized` |
 
 ## API
 
@@ -121,3 +133,9 @@ Uses Redis DB **0** by default (same as Celery broker).
 ## Database
 
 Table `domain_events` stores: `event_type`, `pipeline_id`, `project_id`, `job_id`, `agent`, `step`, `status`, `payload`, `created_at`.
+
+
+
+
+
+

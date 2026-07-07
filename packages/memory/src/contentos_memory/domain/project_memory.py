@@ -4,6 +4,12 @@ from dataclasses import dataclass, field
 from typing import Any
 from uuid import UUID
 
+from contentos_memory.domain.dna_v2 import (
+    CONTENT_ANGLE_LABELS,
+    normalize_brand_keywords,
+    normalize_cinematic_preset,
+    normalize_content_angle,
+)
 from contentos_memory.domain.project_dna import PACE_LABELS, clamp_humor_level, normalize_pace
 
 
@@ -27,6 +33,12 @@ class ProjectMemoryData:
     preferred_formats: list[str] = field(default_factory=list)
     hook_patterns: list[str] = field(default_factory=list)
     cta_style: str = ""
+    default_voice_builtin: str = ""
+    # V5.1.4 Project DNA 2.0
+    cinematic_preset: str = ""
+    content_angle: str = ""
+    brand_keywords: list[str] = field(default_factory=list)
+    editing_preferences: dict = field(default_factory=dict)
 
     def format_dna_context(self) -> str:
         """DNA-only block for {{dna_context}} in prompts."""
@@ -48,6 +60,13 @@ class ProjectMemoryData:
             visual_bits = [f"{k}: {v}" for k, v in list(self.visual_style.items())[:8]]
             if visual_bits:
                 parts.append(f"Estilo visual: {'; '.join(visual_bits)}")
+        if self.content_angle:
+            label = CONTENT_ANGLE_LABELS.get(self.content_angle, self.content_angle)
+            parts.append(f"Ângulo de conteúdo: {label}")
+        if self.cinematic_preset:
+            parts.append(f"Preset cinematográfico: {self.cinematic_preset}")
+        if self.brand_keywords:
+            parts.append(f"Palavras-chave da marca: {', '.join(self.brand_keywords[:10])}")
         return ". ".join(parts) + ("." if parts else "")
 
     def format_context(self) -> str:
@@ -90,6 +109,11 @@ class ProjectMemoryData:
             "preferred_formats": list(self.preferred_formats),
             "hook_patterns": list(self.hook_patterns),
             "cta_style": self.cta_style,
+            "cinematic_preset": self.cinematic_preset,
+            "content_angle": self.content_angle,
+            "brand_keywords": list(self.brand_keywords),
+            "editing_preferences": dict(self.editing_preferences),
+            "default_voice_builtin": self.default_voice_builtin,
             "dna_context_preview": self.format_dna_context(),
         }
 
@@ -109,6 +133,16 @@ class ProjectMemoryData:
             self.hook_patterns = list(patch["hook_patterns"])
         if "cta_style" in patch and patch["cta_style"] is not None:
             self.cta_style = str(patch["cta_style"])
+        if "cinematic_preset" in patch:
+            self.cinematic_preset = normalize_cinematic_preset(patch.get("cinematic_preset"))
+        if "content_angle" in patch:
+            self.content_angle = normalize_content_angle(patch.get("content_angle"))
+        if "brand_keywords" in patch and patch["brand_keywords"] is not None:
+            self.brand_keywords = normalize_brand_keywords(patch["brand_keywords"])
+        if "editing_preferences" in patch and patch["editing_preferences"] is not None:
+            self.editing_preferences = dict(patch["editing_preferences"])
+        if "default_voice_builtin" in patch and patch["default_voice_builtin"] is not None:
+            self.default_voice_builtin = str(patch["default_voice_builtin"])
 
     def to_dict(self) -> dict:
         return {
@@ -122,6 +156,7 @@ class ProjectMemoryData:
             "goal": self.goal,
             "style": self.style,
             "history": self.history,
+            "default_voice_builtin": self.default_voice_builtin,
             **self.to_dna_dict(),
         }
 
@@ -145,6 +180,11 @@ class ProjectMemoryData:
             preferred_formats=list(data.get("preferred_formats") or []),
             hook_patterns=list(data.get("hook_patterns") or []),
             cta_style=str(data.get("cta_style") or ""),
+            default_voice_builtin=str(data.get("default_voice_builtin") or ""),
+            cinematic_preset=normalize_cinematic_preset(data.get("cinematic_preset")),
+            content_angle=normalize_content_angle(data.get("content_angle")),
+            brand_keywords=normalize_brand_keywords(data.get("brand_keywords")),
+            editing_preferences=dict(data.get("editing_preferences") or {}),
         )
 
     @classmethod

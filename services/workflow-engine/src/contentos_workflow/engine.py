@@ -7,6 +7,7 @@ from uuid import UUID
 from contentos_database.models import DeadLetterJob, Job, LogEntry, Pipeline, Project, WorkflowDefinition
 from contentos_shared.enums import JobStatus, PipelineStatus, PipelineStep
 from contentos_shared.events import WorkflowEvent
+from contentos_shared.payload_utils import coerce_dict
 from contentos_shared.workflow_templates import get_builtin, get_default_workflow_name
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -27,6 +28,33 @@ def _creative_retry_from() -> str:
     return os.getenv("CREATIVE_RETRY_FROM", "script").strip() or "script"
 
 
+def _max_director_retries() -> int:
+    try:
+        return max(0, int(os.getenv("MAX_DIRECTOR_RETRIES", "1")))
+    except ValueError:
+        return 1
+
+
+def _retention_retry_enabled() -> bool:
+    return os.getenv("RETENTION_RETRY_ENABLED", "true").lower() in ("1", "true", "yes")
+
+
+def _ai_director_enabled() -> bool:
+    return os.getenv("AI_DIRECTOR_ENABLED", "true").lower() in ("1", "true", "yes")
+
+
+def _pipeline_retry_passed(output_data: dict, *, retention_only: bool = False) -> bool:
+    """Combine video_review + retention gates for creative retry (V5.2.2)."""
+    if retention_only:
+        if "retention_passed" not in output_data:
+            return True
+        return bool(output_data.get("retention_passed"))
+    passed = bool(output_data.get("video_review_passed", True))
+    if _retention_retry_enabled() and "retention_passed" in output_data:
+        passed = passed and bool(output_data.get("retention_passed"))
+    return passed
+
+
 def should_creative_retry(*, passed: bool, retry_count: int, max_retries: int) -> str:
     """Return 'retry', 'advance', or 'advance_exhausted' (ADR-006)."""
     if passed:
@@ -42,6 +70,7 @@ STEP_QUEUE_MAP: dict[str, str] = {
     "script": "contentos.script",
     "script_review": "contentos.script_review",
     "emotion": "contentos.emotion",
+    "content_score": "contentos.content_score",
     "content_intelligence": "contentos.content_intelligence",
     "scene": "contentos.scene",
     "storyboard": "contentos.storyboard",
@@ -50,16 +79,25 @@ STEP_QUEUE_MAP: dict[str, str] = {
     "voice": "contentos.voice",
     "subtitle": "contentos.subtitle",
     "editor": "contentos.editor",
+    "retention": "contentos.retention",
+    "seo": "contentos.seo",
+    "ai_director": "contentos.ai_director",
+    "creative_memory": "contentos.creative_memory",
     "quality": "contentos.quality",
     "video_review": "contentos.video_review",
+    "auto_retry": "contentos.auto_retry",
     "publisher": "contentos.publisher",
     "multi_content": "contentos.multi_content",
     "multi_content_video": "contentos.multi_content_video",
     "clip_research": "contentos.clip_research",
     "asset_collector": "contentos.asset_collector",
     "asset_index": "contentos.asset_index",
+    "media_analyze": "contentos.media_analyze",
+    "asset_search": "contentos.asset_search",
     "thumbnail": "contentos.thumbnail",
     "analytics": "contentos.analytics",
+    "learning": "contentos.learning",
+    "knowledge_base": "contentos.knowledge_base",
 }
 
 
@@ -71,7 +109,12 @@ class WorkflowEngine:
         self.events = event_publisher
 
     async def create_pipeline(
-        self, project_id: UUID, topic: str, workflow_name: str | None = None
+        self,
+        project_id: UUID,
+        topic: str,
+        workflow_name: str | None = None,
+        *,
+        context_json: dict | None = None,
     ) -> Pipeline:
         resolved_name = workflow_name or get_default_workflow_name()
         steps, _ = await self._load_workflow(resolved_name)
@@ -82,6 +125,7 @@ class WorkflowEngine:
             topic=topic,
             workflow_name=resolved_name,
             status=PipelineStatus.PENDING,
+            context_json=context_json or None,
         )
         self.session.add(pipeline)
         await self.session.flush()
@@ -176,9 +220,33 @@ class WorkflowEngine:
                 await self._dispatch_clip_pipeline(pipeline)
             if job.step == "publisher" and output_data:
                 await self._create_video_record(pipeline, output_data)
-            if job.step == "video_review" and await self._maybe_creative_retry(pipeline, job, output_data or {}):
+            if (
+                job.step == "retention"
+                and not await self._pipeline_has_step(pipeline, "auto_retry")
+                and await self._maybe_creative_retry(
+                    pipeline, job, output_data or {}, retention_only=True
+                )
+            ):
                 await self.session.flush()
                 return
+            if (
+                job.step == "video_review"
+                and not await self._pipeline_has_step(pipeline, "auto_retry")
+                and await self._maybe_creative_retry(pipeline, job, output_data or {})
+            ):
+                await self.session.flush()
+                return
+            if job.step == "auto_retry" and await self._maybe_creative_retry(pipeline, job, output_data or {}):
+                await self.session.flush()
+                return
+            if (
+                job.step == "ai_director"
+                and _ai_director_enabled()
+                and await self._maybe_director_retry(pipeline, job, output_data or {})
+            ):
+                await self.session.flush()
+                return
+            await self.session.flush()
             await self._advance_pipeline(pipeline)
         elif status == JobStatus.FAILED:
             if job.step == "quality" and output_data and output_data.get("retry_step"):
@@ -414,18 +482,28 @@ class WorkflowEngine:
         job.error_message = None
         await self._enqueue_step(pipeline, step)
 
-    async def _maybe_creative_retry(self, pipeline: Pipeline, job: Job, output_data: dict) -> bool:
-        """Rewind pipeline when video_review score is low (Tier B8 / ADR-006).
+    async def _maybe_creative_retry(
+        self,
+        pipeline: Pipeline,
+        job: Job,
+        output_data: dict,
+        *,
+        retention_only: bool = False,
+    ) -> bool:
+        """Rewind pipeline when creative quality score is low (Tier B8 / ADR-006).
 
         Returns True if a creative retry was started (caller must not advance).
         """
+        passed = _pipeline_retry_passed(output_data, retention_only=retention_only)
         decision = should_creative_retry(
-            passed=bool(output_data.get("video_review_passed", True)),
+            passed=passed,
             retry_count=pipeline.retry_count,
             max_retries=_max_creative_retries(),
         )
         score = output_data.get("video_score")
+        retention_score = output_data.get("retention_score")
         min_score = (output_data.get("video_review") or {}).get("min_score")
+        retry_target = output_data.get("retention_retry_target")
 
         if decision == "advance":
             return False
@@ -434,7 +512,7 @@ class WorkflowEngine:
             note = (
                 f"Creative retry budget exhausted "
                 f"({pipeline.retry_count}/{_max_creative_retries()}); "
-                f"score={score} min={min_score} — continuing to publisher"
+                f"score={score} retention={retention_score} min={min_score} — continuing pipeline"
             )
             job.output_data = {
                 **output_data,
@@ -445,7 +523,7 @@ class WorkflowEngine:
                 LogEntry(
                     job_id=job.id,
                     pipeline_id=pipeline.id,
-                    agent="video_review",
+                    agent=job.step,
                     message=note,
                 )
             )
@@ -454,7 +532,7 @@ class WorkflowEngine:
                     type="creative_retry.exhausted",
                     pipeline_id=pipeline.id,
                     job_id=job.id,
-                    step="video_review",
+                    step=job.step,
                     status="completed",
                     data={"score": score, "attempts": pipeline.retry_count},
                 )
@@ -471,33 +549,118 @@ class WorkflowEngine:
         await self._rewind_from_step(pipeline, retry_from)
         note = (
             f"Creative retry {pipeline.retry_count}/{_max_creative_retries()} "
-            f"from '{retry_from}' (score={score} < min={min_score})"
+            f"from '{retry_from}'"
+            + (f" target={retry_target}" if retry_target else "")
+            + f" (passed={passed} score={score} retention={retention_score} min={min_score})"
         )
         self.session.add(
-            LogEntry(
-                job_id=job.id,
-                pipeline_id=pipeline.id,
-                agent="video_review",
-                message=note,
-            )
+                LogEntry(
+                    job_id=job.id,
+                    pipeline_id=pipeline.id,
+                    agent=job.step,
+                    message=note,
+                )
         )
         await self._emit(
             WorkflowEvent(
                 type="creative_retry.started",
                 pipeline_id=pipeline.id,
                 job_id=job.id,
-                step="video_review",
+                step=job.step,
                 status="retrying",
                 data={
                     "attempt": pipeline.retry_count,
                     "from_step": retry_from,
                     "score": score,
+                    "retention_score": retention_score,
+                    "retention_retry_target": retry_target,
                     "min_score": min_score,
                 },
             )
         )
         await self._enqueue_step(pipeline, retry_from)
         return True
+
+    async def _maybe_director_retry(self, pipeline: Pipeline, job: Job, output_data: dict) -> bool:
+        """Partial pipeline rewind when AI Director score is below threshold (V5.2.4)."""
+        if output_data.get("director_passed", True):
+            return False
+
+        retry_count = int(output_data.get("director_retry_count") or 0)
+        max_retries = _max_director_retries()
+        overall = output_data.get("director_overall_score")
+        target = output_data.get("director_retry_target")
+        decision = coerce_dict(output_data.get("director_decision"))
+
+        if retry_count >= max_retries:
+            note = (
+                f"AI Director retry budget exhausted ({retry_count}/{max_retries}); "
+                f"score={overall} — continuing pipeline"
+            )
+            job.output_data = {**output_data, "director_retry_exhausted": True, "director_retry_note": note}
+            self.session.add(
+                LogEntry(job_id=job.id, pipeline_id=pipeline.id, agent=job.step, message=note)
+            )
+            await self._emit(
+                WorkflowEvent(
+                    type="director_retry.exhausted",
+                    pipeline_id=pipeline.id,
+                    job_id=job.id,
+                    step=job.step,
+                    status="completed",
+                    data={"score": overall, "attempts": retry_count},
+                )
+            )
+            return False
+
+        steps = await self._ordered_job_steps(pipeline)
+        retry_from = output_data.get("creative_retry_from") or decision.get("retry_from") or _creative_retry_from()
+        if retry_from not in steps:
+            retry_from = "script" if "script" in steps else steps[0]
+
+        next_count = retry_count + 1
+        await self._stash_director_retry_count(pipeline, retry_from, next_count)
+        await self._rewind_from_step(pipeline, retry_from)
+        job.output_data = {**output_data, "director_retry_count": next_count}
+        note = (
+            f"AI Director retry {next_count}/{max_retries} from '{retry_from}'"
+            + (f" target={target}" if target else "")
+            + f" score={overall} — {decision.get('reason', '')}"
+        )
+        self.session.add(
+            LogEntry(job_id=job.id, pipeline_id=pipeline.id, agent=job.step, message=note)
+        )
+        await self._emit(
+            WorkflowEvent(
+                type="director_retry.started",
+                pipeline_id=pipeline.id,
+                job_id=job.id,
+                step=job.step,
+                status="retrying",
+                data={
+                    "attempt": next_count,
+                    "from_step": retry_from,
+                    "target": target,
+                    "score": overall,
+                },
+            )
+        )
+        await self._enqueue_step(pipeline, retry_from)
+        return True
+
+    async def _stash_director_retry_count(self, pipeline: Pipeline, from_step: str, count: int) -> None:
+        """Persist director retry counter on a completed job that survives rewind."""
+        await self.session.refresh(pipeline, ["jobs"])
+        start_order = next((j.order for j in pipeline.jobs if j.step == from_step), 0)
+        for job in sorted(pipeline.jobs, key=lambda j: j.order, reverse=True):
+            if job.order >= start_order:
+                continue
+            if job.status != JobStatus.COMPLETED:
+                continue
+            data = dict(job.output_data or {})
+            data["director_retry_count"] = count
+            job.output_data = data
+            return
 
     async def _rewind_from_step(self, pipeline: Pipeline, from_step: str) -> None:
         """Reset jobs from from_step through the end so payload rebuilds cleanly."""
@@ -520,6 +683,11 @@ class WorkflowEngine:
         pipeline.current_step = from_step
         pipeline.error_message = None
 
+    async def _merge_pipeline_context(self, payload: dict, pipeline: Pipeline) -> dict:
+        if pipeline.context_json:
+            payload.update(pipeline.context_json)
+        return payload
+
     async def _build_payload(self, pipeline: Pipeline, current_step: str) -> dict:
         await self.session.refresh(pipeline, ["jobs"])
         payload: dict = {"topic": pipeline.topic}
@@ -528,6 +696,33 @@ class WorkflowEngine:
                 break
             if job.output_data and job.status == JobStatus.COMPLETED:
                 payload.update(job.output_data)
+        payload = await self._inject_project_voice_profile(payload, pipeline.project_id)
+        payload = await self._inject_project_dna_hints(payload, pipeline.project_id)
+        return await self._merge_pipeline_context(payload, pipeline)
+
+    async def _inject_project_dna_hints(self, payload: dict, project_id: UUID) -> dict:
+        try:
+            from contentos_shared.dna.pipeline_hints import project_dna_payload_hints_async
+
+            hints = await project_dna_payload_hints_async(self.session, project_id)
+            for key, value in hints.items():
+                if not payload.get(key):
+                    payload[key] = value
+        except Exception:
+            pass
+        return payload
+
+    async def _inject_project_voice_profile(self, payload: dict, project_id: UUID) -> dict:
+        if payload.get("voice_profile") or payload.get("voice_profile_id") or payload.get("voice_profile_name"):
+            return payload
+        try:
+            from contentos_shared.voice.project_library import project_voice_payload_hints
+
+            hints = await project_voice_payload_hints(self.session, project_id)
+            if hints:
+                payload.update(hints)
+        except Exception:
+            pass
         return payload
 
     async def _get_pipeline(self, pipeline_id: UUID) -> Pipeline:

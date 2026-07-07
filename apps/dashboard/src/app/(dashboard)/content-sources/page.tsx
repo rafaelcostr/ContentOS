@@ -18,7 +18,7 @@ export default function ContentSourcesPage() {
       <header className="mb-8">
         <h1 className="text-2xl font-bold tracking-tight">Content Sources</h1>
         <p className="text-sm text-muted-foreground">
-          Fontes de mídia plugáveis para Clip Research e Asset Collector (V2.10)
+          Fontes de mídia plugáveis — V2.10 Clip Research + V5.0 Pexels/Pixabay
         </p>
       </header>
 
@@ -54,10 +54,13 @@ export default function ContentSourcesPage() {
           <pre className="overflow-x-auto rounded-md bg-muted p-4 font-mono text-xs">
 {`# Ativar após step scene (não bloqueia pipeline V1)
 ENABLE_V2_CLIP_PIPELINE=true
-CONTENT_SOURCES_ENABLED=local_library,own_library,rss
+CONTENT_SOURCES_ENABLED=pexels,pixabay,local_library,own_library
+PEXELS_API_KEY=...
+PIXABAY_API_KEY=...
+MEDIA_COLLECT_TOP_N=3
 
 # Fluxo async:
-scene → clip_research → asset_collector → takes usa assets coletados`}
+scene → clip_research → asset_collector → asset_search → takes usa assets coletados`}
           </pre>
         </CardContent>
       </Card>

@@ -29,6 +29,8 @@ Manifests em `k8s/` — Kustomize base + overlays.
 | **agents-worker-editor** | 1 |
 
 | **agents-worker-general** | 2 |
+| **agents-worker-v5-quality** | 1 |
+| **agents-worker-v5-media** | 1 |
 
 
 
@@ -58,7 +60,9 @@ Workers are split by Celery queue group (mirrors `docker-compose.scale.yml`):
 
 | editor | `contentos.editor` | 4 |
 
-| general | scene, takes, voice, subtitle, quality, video_review, publisher, … | 2 |
+| general | scene, takes, voice, subtitle, publisher, analytics, learning, multi_content, … | 2 |
+| **v5-quality** | retention, seo, ai_director, creative_memory, quality, video_review, … | 2 |
+| **v5-media** | clip_research, asset_collector, media_analyze, asset_search, … | 2 |
 
 
 
@@ -81,6 +85,8 @@ kubectl apply -f https://github.com/kedacore/keda/releases/download/v2.16.0/keda
 kubectl apply -k k8s/overlays/autoscaling-keda/
 
 ```
+
+Detalhes dos pools V5 e limites de produção: [KEDA_PRODUCTION.md](./KEDA_PRODUCTION.md).
 
 
 
@@ -211,4 +217,6 @@ kubectl -n contentos get scaledobject
 - [x] Monitoring — [PROMETHEUS.md](./PROMETHEUS.md), [GRAFANA.md](./GRAFANA.md)
 
 - [x] Tracing — [OPENTELEMETRY.md](./OPENTELEMETRY.md)
+
+- [x] Go-live checklist — [PRODUCTION_READY.md](./PRODUCTION_READY.md)
 

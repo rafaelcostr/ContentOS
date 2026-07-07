@@ -30,3 +30,37 @@ metadata:
 spec:
   minReplicaCount: 1
   maxReplicaCount: 4
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: agents-worker-v5-quality
+  namespace: contentos
+spec:
+  replicas: 1
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: agents-worker-v5-media
+  namespace: contentos
+spec:
+  replicas: 1
+---
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: agents-worker-v5-quality-scaler
+  namespace: contentos
+spec:
+  minReplicaCount: 1
+  maxReplicaCount: 3
+---
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: agents-worker-v5-media-scaler
+  namespace: contentos
+spec:
+  minReplicaCount: 1
+  maxReplicaCount: 3

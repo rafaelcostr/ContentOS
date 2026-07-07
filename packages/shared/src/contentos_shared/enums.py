@@ -24,6 +24,8 @@ class PipelineStep(str, enum.Enum):
     CLIP_RESEARCH = "clip_research"
     ASSET_COLLECTOR = "asset_collector"
     ASSET_INDEX = "asset_index"
+    MEDIA_ANALYZE = "media_analyze"
+    ASSET_SEARCH = "asset_search"
     THUMBNAIL = "thumbnail"
     ANALYTICS = "analytics"
     # V3 creative agents
@@ -34,10 +36,18 @@ class PipelineStep(str, enum.Enum):
     VIDEO_REVIEW = "video_review"
     STORYBOARD = "storyboard"
     SCENE_DIRECTOR = "scene_director"
+    AUTO_RETRY = "auto_retry"
     # V4 intelligence
     CONTENT_INTELLIGENCE = "content_intelligence"
+    CONTENT_SCORE = "content_score"
     MULTI_CONTENT = "multi_content"
     MULTI_CONTENT_VIDEO = "multi_content_video"
+    LEARNING = "learning"
+    KNOWLEDGE_BASE = "knowledge_base"
+    RETENTION = "retention"
+    SEO = "seo"
+    AI_DIRECTOR = "ai_director"
+    CREATIVE_MEMORY = "creative_memory"
 
     @classmethod
     def ordered(cls) -> list["PipelineStep"]:
@@ -55,15 +65,26 @@ class PipelineStep(str, enum.Enum):
         ]
 
     @classmethod
+    def _insert_media_analyze(cls, steps: list["PipelineStep"]) -> list["PipelineStep"]:
+        if cls.MEDIA_ANALYZE in steps:
+            return steps
+        out = list(steps)
+        if cls.ASSET_INDEX in out:
+            out.insert(out.index(cls.ASSET_INDEX) + 1, cls.MEDIA_ANALYZE)
+        return out
+
+    @classmethod
     def v2_ordered(cls) -> list["PipelineStep"]:
-        """Full V2 pipeline — 14 synchronous steps."""
-        return [
+        """Full V2 pipeline — 16 synchronous steps (V5.0.3 + media_analyze)."""
+        return cls._insert_media_analyze(
+            [
             cls.RESEARCH,
             cls.SCRIPT,
             cls.SCENE,
             cls.CLIP_RESEARCH,
             cls.ASSET_COLLECTOR,
             cls.ASSET_INDEX,
+            cls.ASSET_SEARCH,
             cls.TAKES,
             cls.VOICE,
             cls.SUBTITLE,
@@ -72,7 +93,8 @@ class PipelineStep(str, enum.Enum):
             cls.PUBLISHER,
             cls.THUMBNAIL,
             cls.ANALYTICS,
-        ]
+            ]
+        )
 
     @classmethod
     def v3_quality_ordered(cls) -> list["PipelineStep"]:
@@ -118,6 +140,72 @@ class PipelineStep(str, enum.Enum):
         steps = list(cls.v4_multi_text_ordered())
         steps.append(cls.MULTI_CONTENT_VIDEO)
         return steps
+
+    @classmethod
+    def factory_full_ordered(cls) -> list["PipelineStep"]:
+        """Full factory line using only executable agent steps.
+
+        Uses executable handlers for the complete factory line.
+        """
+        return cls._insert_media_analyze(
+            [
+            cls.RESEARCH,
+            cls.TREND_INTELLIGENCE,
+            cls.HOOK,
+            cls.SCRIPT,
+            cls.SCRIPT_REVIEW,
+            cls.SCENE,
+            cls.STORYBOARD,
+            cls.SCENE_DIRECTOR,
+            cls.CLIP_RESEARCH,
+            cls.ASSET_COLLECTOR,
+            cls.ASSET_INDEX,
+            cls.ASSET_SEARCH,
+            cls.TAKES,
+            cls.VOICE,
+            cls.SUBTITLE,
+            cls.EDITOR,
+            cls.THUMBNAIL,
+            cls.QUALITY,
+            cls.RETENTION,
+            cls.VIDEO_REVIEW,
+            cls.AUTO_RETRY,
+            cls.CONTENT_SCORE,
+            cls.AI_DIRECTOR,
+            cls.CONTENT_INTELLIGENCE,
+            cls.LEARNING,
+            cls.KNOWLEDGE_BASE,
+            cls.CREATIVE_MEMORY,
+            cls.ANALYTICS,
+            cls.SEO,
+            cls.PUBLISHER,
+            ]
+        )
+
+    @classmethod
+    def v5_media_autopilot_ordered(cls) -> list["PipelineStep"]:
+        """V5 media autopilot — tema → B-roll licenciado → take → MP4 (18 steps)."""
+        return cls._insert_media_analyze(
+            [
+                cls.RESEARCH,
+                cls.SCRIPT,
+                cls.SCENE,
+                cls.CLIP_RESEARCH,
+                cls.ASSET_COLLECTOR,
+                cls.ASSET_INDEX,
+                cls.ASSET_SEARCH,
+                cls.TAKES,
+                cls.VOICE,
+                cls.SUBTITLE,
+                cls.EDITOR,
+                cls.QUALITY,
+                cls.RETENTION,
+                cls.AI_DIRECTOR,
+                cls.SEO,
+                cls.CREATIVE_MEMORY,
+                cls.PUBLISHER,
+            ]
+        )
 
 
 class AsyncAgentStep(str, enum.Enum):

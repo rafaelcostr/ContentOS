@@ -7,6 +7,7 @@ from uuid import UUID
 from sqlalchemy import desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from contentos_intelligence.application.executive.command_center import build_command_center_alerts
 from contentos_intelligence.domain.executive_summary import ExecutiveSummary, ModuleStatus
 
 
@@ -118,6 +119,105 @@ class ExecutiveSummaryService:
 
         specialists = list_specialists(include_upcoming=False)
 
+        # V5.5.1 — Command Center metrics
+        from contentos_database.channel_credentials import credentials_connected
+        from contentos_database.models import (
+            Channel,
+            CommentAnalysisRow,
+            CommunityReplyDraftRow,
+            ContentBatch,
+            ContentBatchStatus,
+            PerformanceLearningRow,
+            PlatformAnalyticsSnapshot,
+        )
+
+        factory_batches_total = (
+            await db.execute(
+                select(func.count()).select_from(ContentBatch).where(ContentBatch.project_id == project_id)
+            )
+        ).scalar_one() or 0
+        factory_batches_running = (
+            await db.execute(
+                select(func.count())
+                .select_from(ContentBatch)
+                .where(
+                    ContentBatch.project_id == project_id,
+                    ContentBatch.status.in_(
+                        (ContentBatchStatus.RUNNING, ContentBatchStatus.PENDING_PUBLISH_APPROVAL)
+                    ),
+                )
+            )
+        ).scalar_one() or 0
+        factory_pending_approval = (
+            await db.execute(
+                select(func.count())
+                .select_from(ContentBatch)
+                .where(
+                    ContentBatch.project_id == project_id,
+                    ContentBatch.status == ContentBatchStatus.PENDING_PUBLISH_APPROVAL,
+                )
+            )
+        ).scalar_one() or 0
+
+        platform_snapshots = (
+            await db.execute(
+                select(func.count())
+                .select_from(PlatformAnalyticsSnapshot)
+                .where(PlatformAnalyticsSnapshot.project_id == project_id)
+            )
+        ).scalar_one() or 0
+
+        performance_insights = (
+            await db.execute(
+                select(func.count())
+                .select_from(PerformanceLearningRow)
+                .where(PerformanceLearningRow.project_id == project_id)
+            )
+        ).scalar_one() or 0
+
+        comment_insights = (
+            await db.execute(
+                select(func.count())
+                .select_from(CommentAnalysisRow)
+                .where(CommentAnalysisRow.project_id == project_id)
+            )
+        ).scalar_one() or 0
+
+        community_drafts_pending = (
+            await db.execute(
+                select(func.count())
+                .select_from(CommunityReplyDraftRow)
+                .where(
+                    CommunityReplyDraftRow.project_id == project_id,
+                    CommunityReplyDraftRow.status == "draft",
+                )
+            )
+        ).scalar_one() or 0
+
+        channels = (
+            await db.execute(select(Channel).where(Channel.project_id == project_id, Channel.is_active.is_(True)))
+        ).scalars().all()
+        oauth_channels_connected = sum(1 for c in channels if credentials_connected(c.credentials))
+
+        pipelines_running = (
+            await db.execute(
+                select(func.count())
+                .select_from(Pipeline)
+                .where(Pipeline.project_id == project_id, Pipeline.status == PipelineStatus.RUNNING)
+            )
+        ).scalar_one() or 0
+
+        perf_high = (
+            await db.execute(
+                select(func.count())
+                .select_from(PerformanceLearningRow)
+                .where(
+                    PerformanceLearningRow.project_id == project_id,
+                    PerformanceLearningRow.performance_tier == "high",
+                )
+            )
+        ).scalar_one() or 0
+
         modules = [
             _module_status(
                 "viral",
@@ -209,6 +309,97 @@ class ExecutiveSummaryService:
             ),
         ]
 
+        v5_modules = [
+            _module_status(
+                "factory",
+                "Content Factory",
+                str(factory_batches_total),
+                "/factory",
+                detail=f"{factory_batches_running} ativos · {factory_pending_approval} aguardando",
+                active=factory_batches_total > 0,
+            ),
+            _module_status(
+                "retention",
+                "Retention Engine",
+                str(pipelines_completed),
+                "/retention",
+                detail="pipelines concluídos",
+                active=pipelines_completed > 0,
+            ),
+            _module_status(
+                "seo",
+                "SEO Engine",
+                "—",
+                "/seo",
+                detail="otimização pré-publicação",
+                active=pipelines_completed > 0,
+            ),
+            _module_status(
+                "ai_director",
+                "AI Director",
+                "—",
+                "/director",
+                detail="re-run parcial",
+                active=pipelines_completed > 0,
+            ),
+            _module_status(
+                "creative_memory",
+                "Creative Memory",
+                str(knowledge_entries),
+                "/creative-memory",
+                detail="KB + learning merge",
+                active=knowledge_entries > 0,
+            ),
+            _module_status(
+                "platform_analytics",
+                "OAuth Analytics",
+                str(platform_snapshots),
+                "/analytics",
+                detail=f"{oauth_channels_connected} canal(is) OAuth",
+                active=platform_snapshots > 0 or oauth_channels_connected > 0,
+            ),
+            _module_status(
+                "performance_learning",
+                "Performance Learning",
+                str(performance_insights),
+                "/learning",
+                detail=f"{perf_high} alto desempenho",
+                active=performance_insights > 0,
+            ),
+            _module_status(
+                "comment_analyzer",
+                "Comment Analyzer",
+                str(comment_insights),
+                "/learning",
+                detail="sentimento + temas",
+                active=comment_insights > 0,
+            ),
+            _module_status(
+                "community",
+                "Community Agent",
+                str(community_drafts_pending),
+                "/community",
+                detail="rascunhos pendentes",
+                active=community_drafts_pending > 0,
+            ),
+            _module_status(
+                "voice_studio",
+                "Voice Studio",
+                "—",
+                "/voice-studio",
+                detail="perfis + preview TTS",
+                active=bool(dna_preview),
+            ),
+        ]
+
+        alerts = build_command_center_alerts(
+            factory_pending_approval=int(factory_pending_approval),
+            community_drafts_pending=int(community_drafts_pending),
+            oauth_channels_connected=int(oauth_channels_connected),
+            platform_snapshots=int(platform_snapshots),
+            pipelines_running=int(pipelines_running),
+        )
+
         return ExecutiveSummary(
             project_id=str(project_id),
             project_name=name,
@@ -228,4 +419,14 @@ class ExecutiveSummaryService:
             hook_patterns=hook_patterns,
             latest_learning_topic=latest_learning_topic,
             modules=modules,
+            factory_batches_total=int(factory_batches_total),
+            factory_batches_running=int(factory_batches_running),
+            factory_pending_approval=int(factory_pending_approval),
+            platform_snapshots=int(platform_snapshots),
+            performance_insights=int(performance_insights),
+            comment_insights=int(comment_insights),
+            community_drafts_pending=int(community_drafts_pending),
+            oauth_channels_connected=int(oauth_channels_connected),
+            alerts=alerts,
+            v5_modules=v5_modules,
         )

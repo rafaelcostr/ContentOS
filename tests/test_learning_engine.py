@@ -12,7 +12,7 @@ from contentos_intelligence.application.learning.service import LearningEngine
 from contentos_intelligence.domain.context import IntelligenceContext
 from contentos_intelligence.domain.learning import LearningReport
 from contentos_memory.domain.project_memory import ProjectMemoryData
-from contentos_shared.enums import AsyncAgentStep
+from contentos_shared.enums import AsyncAgentStep, PipelineStep
 from contentos_shared.workflow_templates import get_builtin
 
 
@@ -48,6 +48,30 @@ def test_extract_signals_includes_scores_and_prompts():
     assert "content_score" in types
     assert "viral_score" in types
     assert "prompt" in types
+
+
+def test_extract_signals_includes_performance_feedback():
+    signals = extract_signals(
+        {
+            "publication": {
+                "platforms": {
+                    "youtube": {
+                        "status": "published",
+                        "views": 1200,
+                        "likes": 90,
+                        "comments": 12,
+                        "shares": 6,
+                    }
+                }
+            },
+            "content_score_report": {"total_score": 88},
+        }
+    )
+    perf = next(s for s in signals if s.signal_type == "performance_feedback")
+    assert perf.source == "performance"
+    assert perf.value == "youtube"
+    assert perf.score == 88.0
+    assert perf.metadata["total_views"] == 1200
 
 
 def test_apply_to_memory_when_score_high():
@@ -125,8 +149,18 @@ def test_v4_templates_enable_learning():
         assert tpl["config"].get("enable_learning") is True
 
 
+def test_factory_full_runs_learning_as_pipeline_step():
+    tpl = get_builtin("factory-full")
+    assert tpl is not None
+    assert "learning" in tpl["steps"]
+
+
 def test_async_agent_learning_registered():
     assert AsyncAgentStep.LEARNING.value == "learning"
+
+
+def test_pipeline_step_learning_registered():
+    assert PipelineStep.LEARNING.value == "learning"
 
 
 def test_learning_recorded_event_registered():

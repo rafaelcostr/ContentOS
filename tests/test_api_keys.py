@@ -33,7 +33,9 @@ def test_scope_to_role():
 
 
 @pytest.mark.asyncio
-async def test_rate_limiter_in_memory_fallback():
+async def test_rate_limiter_in_memory_fallback(monkeypatch):
+    monkeypatch.setenv("API_KEY_REDIS_URL", "redis://localhost:0/0")
+    monkeypatch.setattr("contentos_gateway.services.api_key_service.time.time", lambda: 1234567890)
     limiter = ApiKeyRateLimiter()
     key_id = __import__("uuid").uuid4()
     for _ in range(3):

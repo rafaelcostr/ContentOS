@@ -6,6 +6,7 @@ import os
 import tempfile
 from pathlib import Path
 
+from contentos_shared.media_production import render_allow_placeholder
 from contentos_shared.providers.ffmpeg_filters import (
     RenderSpec,
     SceneSegment,
@@ -14,6 +15,38 @@ from contentos_shared.providers.ffmpeg_filters import (
     scene_video_filter,
     subtitle_and_progress_filter,
 )
+
+
+class PlaceholderRenderBlockedError(RuntimeError):
+    """Raised when FFmpeg would synthesize a placeholder scene in production mode."""
+
+
+def x264_video_encode_args() -> list[str]:
+    """x264 settings that keep ffprobe format bit_rate above QUALITY_MIN_BITRATE_BPS."""
+    from contentos_shared.quality_scoring import quality_min_bitrate_bps
+
+    min_bps = quality_min_bitrate_bps()
+    # Explicit CBR-ish VBR: static zoom scenes need a hard floor to pass ffprobe QA.
+    video_target_bps = max(3_000_000, min_bps + 2_000_000)
+    target_k = video_target_bps // 1000
+    return [
+        "-c:v",
+        "libx264",
+        "-preset",
+        "fast",
+        "-b:v",
+        f"{target_k}k",
+        "-minrate",
+        f"{target_k}k",
+        "-maxrate",
+        f"{target_k}k",
+        "-bufsize",
+        f"{target_k * 2}k",
+        "-x264-params",
+        "nal-hrd=cbr",
+        "-pix_fmt",
+        "yuv420p",
+    ]
 
 
 class FFmpegProvider:
@@ -108,6 +141,11 @@ class FFmpegProvider:
                 str(output),
             ]
         else:
+            if not render_allow_placeholder():
+                label = scene.label or f"scene_{scene.index}"
+                raise PlaceholderRenderBlockedError(
+                    f"placeholder render blocked for scene {label} (index={scene.index})"
+                )
             placeholder = tmp / f"ph_{scene.index}.mp4"
             cmd_ph = [
                 "ffmpeg",
@@ -217,14 +255,7 @@ class FFmpegProvider:
                 "-vf",
                 vf,
                 "-an",
-                "-c:v",
-                "libx264",
-                "-preset",
-                "fast",
-                "-crf",
-                "18",
-                "-pix_fmt",
-                "yuv420p",
+                *x264_video_encode_args(),
                 str(video_filtered),
             ]
             await self._run(cmd_fx)
@@ -236,7 +267,13 @@ class FFmpegProvider:
                 music_path = music_gen
                 use_music = True
 
-            af = build_audio_mix_filter(use_music, spec.music_volume)
+            af = build_audio_mix_filter(
+                use_music,
+                spec.music_volume,
+                enable_ducking=spec.enable_ducking,
+                ducking_ratio=spec.ducking_ratio,
+                ducking_threshold=spec.ducking_threshold,
+            )
             cmd_final = [
                 "ffmpeg",
                 "-y",
@@ -256,17 +293,11 @@ class FFmpegProvider:
                     "-map",
                     "[aout]",
                     "-c:v",
-                    "libx264",
-                    "-preset",
-                    "fast",
-                    "-crf",
-                    "18",
+                    "copy",
                     "-c:a",
                     "aac",
                     "-b:a",
                     "192k",
-                    "-r",
-                    str(spec.fps),
                     "-movflags",
                     "+faststart",
                     "-shortest",

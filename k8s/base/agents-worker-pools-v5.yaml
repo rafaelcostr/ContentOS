@@ -1,0 +1,96 @@
+# V5 worker pools — quality/autopilot + media pipeline (V5.5.2)
+# Split from agents-worker-general so KEDA can scale V5 queues independently.
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: agents-worker-v5-quality
+  namespace: contentos
+  labels:
+    app: agents-worker
+    pool: v5-quality
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: agents-worker
+      pool: v5-quality
+  template:
+    metadata:
+      labels:
+        app: agents-worker
+        pool: v5-quality
+    spec:
+      containers:
+        - name: worker
+          image: contentos/agents-worker:latest
+          command:
+            - celery
+            - -A
+            - contentos_agents.worker
+            - worker
+            - -l
+            - info
+            - -Q
+            - contentos.retention,contentos.seo,contentos.ai_director,contentos.creative_memory,contentos.quality,contentos.video_review,contentos.auto_retry,contentos.content_score
+            - -c
+            - "2"
+          envFrom:
+            - configMapRef:
+                name: contentos-config
+            - secretRef:
+                name: contentos-secrets
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "500m"
+            limits:
+              memory: "2Gi"
+              cpu: "2000m"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: agents-worker-v5-media
+  namespace: contentos
+  labels:
+    app: agents-worker
+    pool: v5-media
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: agents-worker
+      pool: v5-media
+  template:
+    metadata:
+      labels:
+        app: agents-worker
+        pool: v5-media
+    spec:
+      containers:
+        - name: worker
+          image: contentos/agents-worker:latest
+          command:
+            - celery
+            - -A
+            - contentos_agents.worker
+            - worker
+            - -l
+            - info
+            - -Q
+            - contentos.clip_research,contentos.asset_collector,contentos.asset_index,contentos.media_analyze,contentos.asset_search
+            - -c
+            - "2"
+          envFrom:
+            - configMapRef:
+                name: contentos-config
+            - secretRef:
+                name: contentos-secrets
+          resources:
+            requests:
+              memory: "1Gi"
+              cpu: "750m"
+            limits:
+              memory: "3Gi"
+              cpu: "3000m"

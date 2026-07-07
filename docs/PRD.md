@@ -49,7 +49,7 @@ Criar shorts em escala exige pesquisa, roteiro, mídia, voz, legendas, edição 
 
 ### 5.1 Já entregue (V1/V2) — baseline
 
-- Pipeline V1 (9 steps) e V2 Dynamic (14 steps)
+- Pipeline V1 (9 steps) e V2 Dynamic (16 steps)
 - AI Gateway + providers (text, speech, subtitle, image, vision, embedding)
 - Prompt / Model / Memory / Cache / Cost Managers
 - Event Bus, Content Sources, Clip Research, Asset Collector, Asset Index
@@ -147,3 +147,4 @@ Criar shorts em escala exige pesquisa, roteiro, mídia, voz, legendas, edição 
 - [ADR.md](./ADR.md) — decisões arquiteturais  
 - [FLOW.md](./FLOW.md) — pipelines atuais  
 - [NAMING.md](./NAMING.md) — missão ↔ código  
+

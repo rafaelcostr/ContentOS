@@ -10,6 +10,7 @@ class AnalyticsInsightData:
     project_id: UUID
     pipeline_id: UUID
     metrics: dict[str, Any] = field(default_factory=dict)
+    performance_feedback: dict[str, Any] = field(default_factory=dict)
     analysis: dict[str, Any] = field(default_factory=dict)
     models_used: dict[str, Any] = field(default_factory=dict)
     prompts_used: dict[str, Any] = field(default_factory=dict)
@@ -22,6 +23,7 @@ class AnalyticsInsightData:
             "pipeline_id": str(self.pipeline_id),
             "video_id": str(self.video_id) if self.video_id else None,
             "metrics": self.metrics,
+            "performance_feedback": self.performance_feedback,
             "analysis": self.analysis,
             "models_used": self.models_used,
             "prompts_used": self.prompts_used,

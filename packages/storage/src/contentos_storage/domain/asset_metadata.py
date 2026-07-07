@@ -15,6 +15,11 @@ SEARCH_FACETS = (
     "label",
     "scene_label",
     "source_id",
+    "scenario",
+    "emotion",
+    "time_of_day",
+    "camera_type",
+    "angle",
 )
 
 
@@ -119,6 +124,13 @@ def normalize_asset_metadata(
     candidate_id = _as_str(candidate.get("candidate_id")) or _as_str(extra.get("candidate_id"))
     if candidate_id:
         meta["candidate_id"] = candidate_id
+
+    for key in ("license_type", "license", "source_url", "author", "duration_seconds"):
+        for src in sources:
+            value = src.get(key)
+            if value not in (None, ""):
+                meta[key] = value
+                break
 
     return meta
 

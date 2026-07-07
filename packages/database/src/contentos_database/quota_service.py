@@ -97,13 +97,19 @@ async def get_quota_status(db: AsyncSession, org_id: UUID) -> QuotaStatus:
 
 
 async def assert_can_start_pipeline(db: AsyncSession, org_id: UUID) -> None:
+    await assert_can_start_batch(db, org_id, 1)
+
+
+async def assert_can_start_batch(db: AsyncSession, org_id: UUID, count: int) -> None:
+    """Validate monthly and concurrent quotas for N pipelines (V5.3.3)."""
     if not quotas_enforced():
         return
+    quantity = max(1, int(count))
     plan = await get_org_plan(db, org_id)
     monthly_used = await count_pipelines_this_month(db, org_id)
-    if not is_unlimited(plan.monthly_pipeline_quota) and monthly_used >= plan.monthly_pipeline_quota:
+    if not is_unlimited(plan.monthly_pipeline_quota) and monthly_used + quantity > plan.monthly_pipeline_quota:
         raise QuotaExceededError("monthly_pipelines", plan.monthly_pipeline_quota, monthly_used)
 
     active = await count_active_pipelines(db, org_id)
-    if not is_unlimited(plan.max_concurrent_pipelines) and active >= plan.max_concurrent_pipelines:
+    if not is_unlimited(plan.max_concurrent_pipelines) and active + quantity > plan.max_concurrent_pipelines:
         raise QuotaExceededError("concurrent_pipelines", plan.max_concurrent_pipelines, active)

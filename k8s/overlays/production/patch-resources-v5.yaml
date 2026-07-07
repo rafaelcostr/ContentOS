@@ -1,0 +1,44 @@
+# Production replicas + KEDA limits for V5 worker pools (V5.5.2)
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: agents-worker-v5-quality
+  namespace: contentos
+spec:
+  replicas: 2
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: agents-worker-v5-media
+  namespace: contentos
+spec:
+  replicas: 2
+---
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: agents-worker-v5-quality-scaler
+  namespace: contentos
+spec:
+  minReplicaCount: 2
+  maxReplicaCount: 12
+---
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: agents-worker-v5-media-scaler
+  namespace: contentos
+spec:
+  minReplicaCount: 2
+  maxReplicaCount: 10
+---
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: agents-worker-general-scaler
+  namespace: contentos
+spec:
+  minReplicaCount: 2
+  maxReplicaCount: 12

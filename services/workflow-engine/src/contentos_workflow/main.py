@@ -44,6 +44,16 @@ class CreatePipelineRequest(BaseModel):
     project_id: UUID
     topic: str
     workflow_name: str | None = None
+    context_json: dict | None = None
+    auto_start: bool = True
+
+
+class UpdatePipelineContextRequest(BaseModel):
+    context: dict
+
+
+class RetryStepRequest(BaseModel):
+    step: str
 
 
 class AgentCallbackRequest(BaseModel):
@@ -79,8 +89,14 @@ async def create_pipeline(
                     "current": exc.current,
                 },
             ) from exc
-    pipeline = await engine.create_pipeline(body.project_id, body.topic, body.workflow_name)
-    await engine.start_pipeline(pipeline.id)
+    pipeline = await engine.create_pipeline(
+        body.project_id,
+        body.topic,
+        body.workflow_name,
+        context_json=body.context_json,
+    )
+    if body.auto_start:
+        await engine.start_pipeline(pipeline.id)
     return {"id": str(pipeline.id), "topic": pipeline.topic, "status": pipeline.status.value}
 
 
@@ -135,6 +151,35 @@ async def cancel_pipeline(pipeline_id: UUID, engine: WorkflowEngine = Depends(ge
         "status": pipeline.status.value,
         "current_step": pipeline.current_step,
     }
+
+
+@app.patch("/internal/pipelines/{pipeline_id}/context")
+async def update_pipeline_context(
+    pipeline_id: UUID,
+    body: UpdatePipelineContextRequest,
+    db: AsyncSession = Depends(get_session),
+):
+    pipeline = await db.get(Pipeline, pipeline_id)
+    if not pipeline:
+        raise HTTPException(status_code=404, detail="Pipeline not found")
+    merged = dict(pipeline.context_json or {})
+    merged.update(body.context)
+    pipeline.context_json = merged
+    await db.commit()
+    return {"id": str(pipeline.id), "context_json": pipeline.context_json}
+
+
+@app.post("/internal/pipelines/{pipeline_id}/retry-step")
+async def retry_pipeline_step(
+    pipeline_id: UUID,
+    body: RetryStepRequest,
+    engine: WorkflowEngine = Depends(get_engine),
+):
+    try:
+        await engine.retry_step(pipeline_id, body.step)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return {"ok": True, "pipeline_id": str(pipeline_id), "step": body.step}
 
 
 @app.get("/health")

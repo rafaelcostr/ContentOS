@@ -7,8 +7,18 @@ Prerequisites:
 Usage:
   python scripts/e2e_pipeline.py
 
-  # V2 dynamic (14 steps)
+  # V2 dynamic (16 steps)
   $env:E2E_WORKFLOW = "v2-dynamic"
+  python scripts/e2e_pipeline.py
+
+  # V5 media autopilot (14 steps, GTA 6 default topic)
+  $env:E2E_WORKFLOW = "v5-media-autopilot"
+  $env:E2E_TOPIC = "GTA 6"
+  python scripts/e2e_pipeline.py
+
+  # Factory full (31 steps — long run, ~30–90 min local)
+  $env:E2E_WORKFLOW = "factory-full"
+  $env:E2E_TOPIC = "GTA 6"
   python scripts/e2e_pipeline.py
 
   # Resume polling an existing pipeline (after script crash)
@@ -20,6 +30,14 @@ import asyncio
 import os
 import sys
 import time
+from collections.abc import Awaitable, Callable
+
+# Line-buffer stdout so background E2E runs show progress immediately on Windows.
+if hasattr(sys.stdout, "reconfigure"):
+    try:
+        sys.stdout.reconfigure(line_buffering=True)
+    except Exception:
+        pass
 
 import httpx
 
@@ -68,10 +86,27 @@ async def request_with_retry(
     raise last_exc
 
 
+async def login_headers(
+    client: httpx.AsyncClient,
+    email: str,
+    password: str,
+) -> dict[str, str]:
+    login = await request_with_retry(
+        client,
+        "POST",
+        f"{GATEWAY}/api/v1/auth/login",
+        json={"email": email, "password": password},
+    )
+    login.raise_for_status()
+    return {"Authorization": f"Bearer {login.json()['access_token']}"}
+
+
 async def wait_for_pipeline(
     client: httpx.AsyncClient,
     pipeline_id: str,
     headers: dict[str, str],
+    *,
+    reauth: Callable[[], Awaitable[dict[str, str]]] | None = None,
 ) -> dict:
     """Poll pipeline status via Gateway API (stable; survives workflow-engine restarts)."""
     deadline = time.monotonic() + PIPELINE_TIMEOUT
@@ -84,6 +119,15 @@ async def wait_for_pipeline(
             f"{GATEWAY}/api/v1/pipelines/{pipeline_id}",
             headers=headers,
         )
+        if resp.status_code == 401 and reauth:
+            headers.update(await reauth())
+            print("  [auth] Token refreshed — resuming poll", file=sys.stderr)
+            resp = await request_with_retry(
+                client,
+                "GET",
+                f"{GATEWAY}/api/v1/pipelines/{pipeline_id}",
+                headers=headers,
+            )
         resp.raise_for_status()
         pdata = resp.json()
         status = pdata["status"]
@@ -112,6 +156,35 @@ async def wait_for_pipeline(
     raise TimeoutError(f"Pipeline did not finish within {PIPELINE_TIMEOUT}s")
 
 
+async def cancel_stale_pipelines(
+    client: httpx.AsyncClient,
+    headers: dict[str, str],
+) -> int:
+    """Cancel running/pending pipelines for the current org (frees concurrent quota)."""
+    resp = await request_with_retry(
+        client,
+        "GET",
+        f"{GATEWAY}/api/v1/pipelines?limit=50",
+        headers=headers,
+    )
+    resp.raise_for_status()
+    cancelled = 0
+    for pipe in resp.json():
+        if pipe.get("status") not in ("running", "pending"):
+            continue
+        pid = pipe["id"]
+        cancel = await request_with_retry(
+            client,
+            "POST",
+            f"{GATEWAY}/api/v1/pipelines/{pid}/cancel",
+            headers=headers,
+        )
+        if cancel.status_code in (200, 400):
+            cancelled += 1
+            print(f"  Cancelled stale pipeline: {pid} ({pipe.get('topic')})")
+    return cancelled
+
+
 async def main() -> int:
     email = os.getenv("E2E_EMAIL", "e2e@contentos.dev")
     password = os.getenv("E2E_PASSWORD", "e2e123456")
@@ -136,9 +209,11 @@ async def main() -> int:
             json={"email": email, "password": password},
         )
         login.raise_for_status()
-        token = login.json()["access_token"]
-        headers = {"Authorization": f"Bearer {token}"}
+        headers = await login_headers(client, email, password)
         print(f"Authenticated: {email}")
+
+        async def reauth() -> dict[str, str]:
+            return await login_headers(client, email, password)
 
         if RESUME_PIPELINE_ID:
             pipeline_id = RESUME_PIPELINE_ID
@@ -155,12 +230,17 @@ async def main() -> int:
             print(f"  status: {pdata.get('status')} @ {pdata.get('current_step') or '—'}\n")
         else:
             # 2. Provider health
-            health = await request_with_retry(client, "GET", f"{GATEWAY}/api/v1/providers/health")
+            health = await request_with_retry(
+                client,
+                "GET",
+                f"{GATEWAY}/api/v1/providers/health",
+                headers=headers,
+            )
             health.raise_for_status()
             hdata = health.json()
             print(f"Providers healthy: {hdata['all_healthy']}")
             for p in hdata["providers"]:
-                icon = "✓" if p["healthy"] else "✗"
+                icon = "OK" if p["healthy"] else "FAIL"
                 print(f"  {icon} {p['name']}: {p['detail']}")
             if not hdata["all_healthy"]:
                 print("\nProviders not ready — run: python scripts/wait_for_services.py", file=sys.stderr)
@@ -189,6 +269,19 @@ async def main() -> int:
                 json=body,
                 headers=headers,
             )
+            if pipeline.status_code == 429:
+                detail = pipeline.json().get("detail", {})
+                if detail.get("kind") == "concurrent_pipelines":
+                    print("Concurrent quota full — cancelling stale pipelines...")
+                    n = await cancel_stale_pipelines(client, headers)
+                    if n:
+                        pipeline = await request_with_retry(
+                            client,
+                            "POST",
+                            f"{GATEWAY}/api/v1/projects/{project_id}/pipelines",
+                            json=body,
+                            headers=headers,
+                        )
             if pipeline.status_code >= 400:
                 print(f"Pipeline create failed ({pipeline.status_code}): {pipeline.text}", file=sys.stderr)
             pipeline.raise_for_status()
@@ -197,17 +290,43 @@ async def main() -> int:
             print(f"Pipeline started: {pipeline_id} — topic: {TOPIC} — workflow: {wf_label}\n")
 
         # 5. Poll until done
-        result = await wait_for_pipeline(client, pipeline_id, headers)
+        result = await wait_for_pipeline(client, pipeline_id, headers, reauth=reauth)
 
         print(f"\n=== Result: {result['status'].upper()} ===")
         for j in result["jobs"]:
-            mark = "✓" if j["status"] == "completed" else "✗"
+            mark = "OK" if j["status"] == "completed" else "FAIL"
             print(f"  {mark} {j['step']}: {j['status']}")
 
         if result["status"] != "completed":
             if result.get("error"):
                 print(f"Error: {result['error']}", file=sys.stderr)
             return 1
+
+        # 6. Optional: publish audit log (factory-full / publisher step)
+        if WORKFLOW_TEMPLATE in ("factory-full", "v5-media-autopilot", "v1-default"):
+            detail = await request_with_retry(
+                client,
+                "GET",
+                f"{GATEWAY}/api/v1/pipelines/{pipeline_id}",
+                headers=headers,
+            )
+            detail.raise_for_status()
+            project_id = detail.json().get("project_id")
+            if project_id:
+                attempts = await request_with_retry(
+                    client,
+                    "GET",
+                    f"{GATEWAY}/api/v1/publish/attempts?project_id={project_id}",
+                    headers=headers,
+                )
+                if attempts.status_code == 200:
+                    rows = attempts.json()
+                    print(f"\nPublish attempts logged: {len(rows)}")
+                    for row in rows[:5]:
+                        print(
+                            f"  - {row.get('platform')}: {row.get('status')} "
+                            f"({row.get('publish_mode')})"
+                        )
 
         print("\nE2E pipeline completed successfully.")
         print("Dashboard: http://localhost:3000/jobs")

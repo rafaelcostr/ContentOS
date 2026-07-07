@@ -1,0 +1,82 @@
+groups:
+  - name: contentos-platform
+    rules:
+      - alert: ContentOSRedisDown
+        expr: contentos_redis_up == 0
+        for: 2m
+        labels:
+          severity: critical
+          runbook_id: redis-down
+        annotations:
+          summary: Redis indisponível
+          description: O gateway não consegue alcançar o broker Redis/Celery.
+
+      - alert: ContentOSPostgresDown
+        expr: contentos_postgres_up == 0
+        for: 2m
+        labels:
+          severity: critical
+          runbook_id: postgres-down
+        annotations:
+          summary: PostgreSQL indisponível
+          description: O gateway não consegue executar SELECT 1 no banco primário.
+
+      - alert: ContentOSPostgresLatencyHigh
+        expr: contentos_postgres_latency_seconds > 0.5
+        for: 5m
+        labels:
+          severity: warning
+          runbook_id: postgres-latency
+        annotations:
+          summary: Latência alta no PostgreSQL
+          description: Round-trip acima de 500ms por 5 minutos.
+
+      - alert: ContentOSCeleryWorkersZero
+        expr: contentos_celery_workers < 1
+        for: 3m
+        labels:
+          severity: critical
+          runbook_id: celery-workers-zero
+        annotations:
+          summary: Nenhum worker Celery ativo
+          description: Nenhum worker respondeu ao inspect do Celery.
+
+      - alert: ContentOSQueueBacklogHigh
+        expr: contentos_celery_pending_total > 150
+        for: 10m
+        labels:
+          severity: critical
+          runbook_id: queue-backlog
+        annotations:
+          summary: Backlog crítico de filas Celery
+          description: Mais de 150 tarefas pendentes no total.
+
+      - alert: ContentOSQueueBacklogWarning
+        expr: contentos_celery_pending_total > 50
+        for: 15m
+        labels:
+          severity: warning
+          runbook_id: queue-backlog
+        annotations:
+          summary: Backlog elevado de filas Celery
+          description: Mais de 50 tarefas pendentes por 15 minutos.
+
+      - alert: ContentOSPipelineFailures
+        expr: increase(contentos_pipelines_total{status="failed"}[1h]) > 0 and increase(contentos_pipelines_total{status="completed"}[1h]) == 0
+        for: 30m
+        labels:
+          severity: warning
+          runbook_id: pipeline-failures
+        annotations:
+          summary: Pipelines falhando sem conclusões recentes
+          description: Falhas de pipeline na última hora sem pipelines completed.
+
+      - alert: ContentOSJobFailures
+        expr: increase(contentos_jobs_total{status="failed"}[1h]) > 5
+        for: 15m
+        labels:
+          severity: warning
+          runbook_id: job-failures
+        annotations:
+          summary: Taxa elevada de falhas de jobs
+          description: Mais de 5 jobs failed na última hora.

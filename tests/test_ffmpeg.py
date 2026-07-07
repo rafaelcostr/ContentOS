@@ -8,6 +8,7 @@ from contentos_shared.providers.ffmpeg_filters import (
     build_audio_mix_filter,
     placeholder_video_filter,
     scene_video_filter,
+    speed_filter_expr,
     subtitle_and_progress_filter,
 )
 
@@ -53,6 +54,13 @@ def test_audio_mix_with_music():
     af = build_audio_mix_filter(True, 0.15)
     assert "amix" in af
     assert "0.15" in af
+    assert "sidechaincompress" in af
+    assert "asplit=2[voicekey][voicemix]" in af
+
+
+def test_speed_filter_expr_identity():
+    seg = SceneSegment(index=0, duration=3.0, playback_speed=1.0)
+    assert speed_filter_expr(seg, 3.0, 60) is None
 
 
 def test_render_spec_defaults():

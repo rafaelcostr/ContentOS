@@ -6,6 +6,9 @@ from typing import Any
 
 from contentos_shared.payload_utils import coerce_dict
 
+from contentos_intelligence.application.performance_learning.pipeline_feedback import (
+    build_pipeline_performance_feedback,
+)
 from contentos_intelligence.domain.learning import LearningSignal
 
 
@@ -114,5 +117,23 @@ def extract_signals(payload: dict[str, Any]) -> list[LearningSignal]:
         signals.append(LearningSignal(signal_type="content_score", value=str(content_score), score=content_score))
     if viral_score is not None:
         signals.append(LearningSignal(signal_type="viral_score", value=str(viral_score), score=viral_score))
+    performance = build_pipeline_performance_feedback(payload)
+    if performance.get("learning_ready"):
+        metadata = {
+            "total_views": performance.get("total_views", 0),
+            "total_engagement": performance.get("total_engagement", 0),
+            "published_count": performance.get("published_count", 0),
+            "failed_count": performance.get("failed_count", 0),
+            "best_platform": performance.get("best_platform"),
+        }
+        signals.append(
+            LearningSignal(
+                signal_type="performance_feedback",
+                value=str(performance.get("best_platform") or "pipeline"),
+                score=_float_or_none(coerce_dict(performance.get("signals")).get("content_score")),
+                source="performance",
+                metadata=metadata,
+            )
+        )
     signals.extend(extract_prompt_signals(payload))
     return signals

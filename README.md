@@ -21,6 +21,7 @@ Recebe um **tema** (ex.: `GTA 6`) e executa um pipeline de agentes de IA — pes
 | Doc | Descrição |
 |-----|-----------|
 | [Arquitetura](./docs/ARCHITECTURE.md) | Visão geral, diagramas, decisões |
+| [Mapa da Linha de Montagem](./docs/FACTORY_MAP.md) | Etapas, módulos, estado atual e lacunas |
 | [Fluxo](./docs/FLOW.md) | Pipeline V1/V2, sequência, retry |
 | [API](./docs/API.md) | Endpoints principais |
 | [Naming](./docs/NAMING.md) | Nomes da missão vs código |
@@ -38,7 +39,7 @@ Recebe um **tema** (ex.: `GTA 6`) e executa um pipeline de agentes de IA — pes
 
 | Doc | Descrição |
 |-----|-----------|
-| [Arquitetura V2](./docs/ARCHITECTURE_V2.md) | Componentes V2 e pipeline 14 steps |
+| [Arquitetura V2](./docs/ARCHITECTURE_V2.md) | Componentes V2 e pipeline 16 steps |
 | [Migração V1→V2](./docs/V2_MIGRATION.md) | Guia de upgrade |
 | [AI Gateway](./docs/AI_GATEWAY.md) | Roteamento central de IA |
 | [Event Bus](./docs/EVENT_BUS.md) | Redis Streams + event store |
@@ -94,7 +95,7 @@ alembic upgrade head
 # E2E V1
 python scripts/e2e_pipeline.py
 
-# E2E V2 dynamic (14 steps)
+# E2E V2 dynamic (16 steps)
 $env:E2E_WORKFLOW = "v2-dynamic"
 python scripts/e2e_pipeline.py
 ```
@@ -107,14 +108,27 @@ python scripts/e2e_pipeline.py
 research → script → scene → takes → voice → subtitle → editor → quality → publisher
 ```
 
-**V2 (`v2-dynamic`)** — 14 steps:
+**V2 (`v2-dynamic`)** — 16 steps:
 
 ```
 research → script → scene → clip_research → asset_collector → asset_index →
-takes → voice → subtitle → editor → quality → publisher → thumbnail → analytics
+media_analyze → asset_search → takes → voice → subtitle → editor → quality → publisher → thumbnail → analytics
 ```
 
 No dashboard: **Projetos** → criar pipeline → workflow **V2 Dynamic**.
+
+**Factory Full (`factory-full`)** — linha de montagem executável de 31 steps:
+
+```
+research → trend_intelligence → hook → script → script_review → scene →
+storyboard → scene_director → clip_research → asset_collector → asset_index →
+media_analyze → asset_search → takes → voice → subtitle → editor → thumbnail →
+retention → quality → video_review → auto_retry → content_score → ai_director →
+content_intelligence → learning → knowledge_base → creative_memory → analytics →
+seo → publisher
+```
+
+Esse workflow representa a fábrica completa com os handlers disponíveis hoje. O mapa oficial fica em `docs/FACTORY_MAP.md` e em `packages/shared/src/contentos_shared/factory_map.py`.
 
 ## Estrutura
 
@@ -188,3 +202,7 @@ cd apps/dashboard && npm run test:e2e
 ## Licença
 
 Proprietário.
+
+
+
+

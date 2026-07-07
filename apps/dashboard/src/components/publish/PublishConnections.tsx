@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, type Project } from "@/lib/api";
+import { PublishAttempts } from "@/components/publish/PublishAttempts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
@@ -45,6 +46,7 @@ export function PublishConnections({ projects }: PublishConnectionsProps) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["publish-channels", projectId] });
       queryClient.invalidateQueries({ queryKey: ["publish-status", projectId] });
+      queryClient.invalidateQueries({ queryKey: ["publish-attempts", projectId] });
     },
   });
 
@@ -91,9 +93,12 @@ export function PublishConnections({ projects }: PublishConnectionsProps) {
               <Badge variant={status.live_enabled ? "default" : "outline"}>
                 Modo: {status.publish_mode}
               </Badge>
+              {status.prepare_only_enabled && <Badge variant="secondary">prepare_only</Badge>}
+              {status.dry_run_enabled && <Badge variant="outline">dry_run</Badge>}
+              {status.publish_require_qa && <Badge variant="outline">QA gate</Badge>}
               {!status.live_enabled && (
                 <span className="text-xs text-muted-foreground">
-                  Defina PUBLISH_MODE=live no servidor para publicar de verdade.
+                  Promova PUBLISH_MODE: dry_run → prepare_only → live no servidor.
                 </span>
               )}
             </>
@@ -146,6 +151,11 @@ export function PublishConnections({ projects }: PublishConnectionsProps) {
           })}
         </div>
       </CardContent>
+      {projectId && (
+        <div className="px-6 pb-6">
+          <PublishAttempts projectId={projectId} embedded />
+        </div>
+      )}
     </Card>
   );
 }

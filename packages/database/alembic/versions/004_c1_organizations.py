@@ -28,7 +28,49 @@ def _column_exists(table: str, column: str) -> bool:
     return column in cols
 
 
+def _userrole_exists() -> bool:
+    conn = op.get_bind()
+    return conn.execute(text("SELECT 1 FROM pg_type WHERE typname = 'userrole'")).fetchone() is not None
+
+
+def _ensure_userrole_enum() -> None:
+    """Idempotent — create_tables() may have created userrole before alembic 004."""
+    if _userrole_exists():
+        return
+    conn = op.get_bind()
+    conn.execute(
+        text(
+            """
+            DO $$ BEGIN
+                CREATE TYPE userrole AS ENUM ('admin', 'editor', 'viewer');
+            EXCEPTION
+                WHEN duplicate_object THEN NULL;
+            END $$;
+            """
+        )
+    )
+
+
+def _userrole_admin_literal() -> str:
+    """Match labels from create_tables (ADMIN) or migration enum (admin)."""
+    conn = op.get_bind()
+    row = conn.execute(
+        text(
+            """
+            SELECT e.enumlabel
+            FROM pg_enum e
+            JOIN pg_type t ON e.enumtypid = t.oid
+            WHERE t.typname = 'userrole' AND e.enumlabel IN ('admin', 'ADMIN')
+            ORDER BY CASE WHEN e.enumlabel = 'ADMIN' THEN 0 ELSE 1 END
+            LIMIT 1
+            """
+        )
+    ).fetchone()
+    return row[0] if row else "admin"
+
+
 def upgrade() -> None:
+    _ensure_userrole_enum()
     if not _table_exists("organizations"):
         op.create_table(
             "organizations",
@@ -110,9 +152,9 @@ def _backfill_orgs() -> None:
             conn.execute(
                 text(
                     "INSERT INTO organization_members (id, organization_id, user_id, role, created_at) "
-                    "VALUES (:id, :org_id, :uid, 'admin', NOW())"
+                    "VALUES (:id, :org_id, :uid, CAST(:role AS userrole), NOW())"
                 ),
-                {"id": uuid4(), "org_id": org_id, "uid": user_id},
+                {"id": uuid4(), "org_id": org_id, "uid": user_id, "role": _userrole_admin_literal()},
             )
 
         conn.execute(

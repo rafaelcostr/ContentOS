@@ -23,15 +23,23 @@ class AnalyticsService:
 
         views = 0
         likes = 0
+        comments = 0
+        shares = 0
         for pub in platform_pubs.values():
             if isinstance(pub, dict):
                 views += int(pub.get("views") or pub.get("view_count") or 0)
                 likes += int(pub.get("likes") or pub.get("like_count") or 0)
+                comments += int(pub.get("comments") or pub.get("comment_count") or 0)
+                shares += int(pub.get("shares") or pub.get("share_count") or 0)
 
         source = "platform" if views > 0 else "estimated"
+        engagement_rate = round((likes + comments + shares) / views, 4) if views > 0 else None
         return {
             "views": views,
             "likes": likes,
+            "comments": comments,
+            "shares": shares,
+            "engagement_rate": engagement_rate,
             "retention_pct": payload.get("retention_pct", 0),
             "ctr_pct": payload.get("ctr_pct", 0),
             "duration_seconds": payload.get("duration_seconds"),

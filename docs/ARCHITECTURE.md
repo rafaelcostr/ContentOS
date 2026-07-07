@@ -1,6 +1,6 @@
 # ContentOS — Arquitetura do Sistema
 
-> **V2:** pipeline dinâmico de 14 steps, AI Gateway, Content Sources e Asset Manager V2 — ver [ARCHITECTURE_V2.md](./ARCHITECTURE_V2.md), [FLOW.md](./FLOW.md) e [NAMING.md](./NAMING.md).
+> **V2:** pipeline dinâmico de 16 steps, AI Gateway, Content Sources e Asset Manager V2 — ver [ARCHITECTURE_V2.md](./ARCHITECTURE_V2.md), [FLOW.md](./FLOW.md) e [NAMING.md](./NAMING.md).
 
 ## Visão Geral
 
@@ -311,3 +311,4 @@ Ver [PROVIDERS.md](./PROVIDERS.md).
 
 - [FLOW.md](./FLOW.md) — Fluxograma detalhado do pipeline
 - [AGENTS.md](./AGENTS.md) — Especificação de cada agente
+

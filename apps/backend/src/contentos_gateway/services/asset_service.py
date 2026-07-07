@@ -97,6 +97,43 @@ class AssetService:
         )
         return await AssetIndexService(self.session).search_filters(filters)
 
+    async def search_assets_semantic(
+        self,
+        q: str,
+        *,
+        category: str | None = None,
+        limit: int = 50,
+        min_similarity: float | None = None,
+    ) -> list[dict]:
+        from contentos_intelligence.application.asset_semantic_search import AssetSemanticSearch
+
+        searcher = AssetSemanticSearch(self.session)
+        hits = await searcher.search(
+            q,
+            category=category,
+            limit=limit,
+            min_similarity=min_similarity,
+        )
+        return [
+            {
+                **hit.to_dict(),
+                "asset": hit.asset,
+            }
+            for hit in hits
+        ]
+
+    async def semantic_search_stats(self) -> dict:
+        from contentos_intelligence.infrastructure.asset_media_profile_repository import (
+            count_profiles_with_embeddings,
+        )
+
+        embedded = await count_profiles_with_embeddings(self.session)
+        return {
+            "semantic_search_enabled": os.getenv("ENABLE_ASSET_SEMANTIC_SEARCH", "true").lower()
+            in ("1", "true", "yes"),
+            "profiles_with_embeddings": embedded,
+        }
+
     async def tag_asset(self, asset_id: UUID, tags: list[str]) -> Asset | None:
         return await AssetIndexService(self.session).tag_asset(asset_id, tags)
 
@@ -109,6 +146,35 @@ class AssetService:
             query = query.where(Asset.category == category)
         result = await self.session.execute(query)
         return list(result.scalars().all())
+
+    async def recommend_takes(
+        self,
+        *,
+        topic: str,
+        scenes: list[dict],
+        category: str | None = AssetCategory.TAKES.value,
+        limit: int = 500,
+    ) -> dict:
+        from contentos_intelligence.application.take_recommendation.service import TakeRecommendationService
+
+        query = select(Asset).order_by(Asset.created_at.desc()).limit(limit)
+        if category:
+            query = query.where(Asset.category == category)
+        result = await self.session.execute(query)
+        assets = list(result.scalars().all())
+        recommender = TakeRecommendationService(database_url=os.getenv("DATABASE_URL"))
+        matches = await recommender.recommend_scenes(
+            topic=topic,
+            scenes=scenes,
+            assets=assets,
+        )
+        selected = [m["selected"] for m in matches if m.get("selected")]
+        return {
+            "asset_matches": matches,
+            "assets_selected": selected,
+            "take_recommendation": recommender.enabled,
+            "asset_count": len(assets),
+        }
 
     async def storage_stats(self) -> dict:
         total = await self.session.scalar(select(func.count()).select_from(Asset))

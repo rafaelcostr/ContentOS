@@ -168,6 +168,57 @@ export interface Asset {
   created_at: string;
 }
 
+export interface AssetSemanticSearchHit {
+  similarity: number;
+  match_type: "embedding" | "text" | string;
+  analysis?: Record<string, unknown> | null;
+  asset: Asset;
+}
+
+export interface AssetSemanticSearchResponse {
+  query: string;
+  count: number;
+  semantic_search_enabled: boolean;
+  results: AssetSemanticSearchHit[];
+}
+
+export interface VoiceProfile {
+  id: string;
+  project_id: string | null;
+  name: string;
+  slug: string;
+  provider: string;
+  voice_id: string | null;
+  speed: number;
+  pitch_semitones: number;
+  pause_ms: number;
+  is_default: boolean;
+  is_builtin?: boolean;
+}
+
+export interface VoiceLibraryEntry {
+  id: string;
+  name: string;
+  slug: string;
+  provider: string;
+  voice_id: string | null;
+  speed: number;
+  pitch_semitones: number;
+  pause_ms: number;
+  is_default: boolean;
+  is_builtin: boolean;
+  source: string;
+}
+
+export interface VoiceLibrary {
+  project_id: string;
+  default_id: string | null;
+  default_builtin: string | null;
+  builtins: VoiceLibraryEntry[];
+  custom: VoiceLibraryEntry[];
+  entries: VoiceLibraryEntry[];
+}
+
 export interface AssetPreview {
   asset_id: string;
   url: string | null;
@@ -202,6 +253,8 @@ export interface StorageStats {
   total_bytes: number;
   total_mb: number;
   indexed_hashes?: number;
+  profiles_with_embeddings?: number;
+  semantic_search_enabled?: boolean;
   by_category: Record<string, { count: number; size_bytes: number }>;
 }
 
@@ -258,6 +311,11 @@ export interface ProjectMemory {
   preferred_formats?: string[];
   hook_patterns?: string[];
   cta_style?: string;
+  cinematic_preset?: string;
+  content_angle?: string;
+  brand_keywords?: string[];
+  editing_preferences?: Record<string, unknown>;
+  default_voice_builtin?: string;
   memory_context_preview: string;
   dna_context_preview?: string;
 }
@@ -271,6 +329,11 @@ export interface ProjectDna {
   preferred_formats: string[];
   hook_patterns: string[];
   cta_style: string;
+  cinematic_preset: string;
+  content_angle: string;
+  brand_keywords: string[];
+  editing_preferences: Record<string, unknown>;
+  default_voice_builtin: string;
   dna_context_preview: string;
 }
 
@@ -363,6 +426,342 @@ export interface ContentScoreReport {
   mode: string;
   summary: string;
   dimensions: ContentScoreDimension[];
+}
+
+export interface RetentionTimelinePoint {
+  second: number;
+  retention_pct: number;
+  scene_label: string;
+}
+
+export interface RetentionWeakSegment {
+  label: string;
+  start_second: number;
+  end_second: number;
+  avg_retention_pct: number;
+  min_retention_pct: number;
+  reason: string;
+}
+
+export interface RetentionReport {
+  overall_score: number;
+  avg_retention_pct: number;
+  hook_retention_pct: number;
+  completion_pct: number;
+  duration_seconds: number;
+  drop_seconds: number[];
+  weak_segments: RetentionWeakSegment[];
+  timeline: RetentionTimelinePoint[];
+  recommendations: string[];
+}
+
+export interface SeoPlatformMeta {
+  platform: string;
+  title: string;
+  description: string;
+  hashtags: string[];
+}
+
+export interface SeoPackage {
+  title: string;
+  description: string;
+  hashtags: string[];
+  keywords: string[];
+  title_variants: string[];
+  platforms: Record<string, SeoPlatformMeta>;
+  seo_score: number;
+  recommendations: string[];
+}
+
+export interface DirectorWeakSignal {
+  name: string;
+  score: number;
+  weight: number;
+  source: string;
+}
+
+export interface DirectorDecision {
+  passed: boolean;
+  overall_score: number;
+  min_score: number;
+  target: string;
+  retry_from: string;
+  reason: string;
+  action: string;
+  weak_signals: DirectorWeakSignal[];
+}
+
+export interface CreativeMemoryHit {
+  resource_type: string;
+  title: string;
+  snippet: string;
+  similarity: number;
+  source: string;
+}
+
+export interface CreativeMemoryReport {
+  project_id: string;
+  pipeline_id: string | null;
+  topic: string;
+  memory_applied: boolean;
+  memory_updates: string[];
+  kb_indexed_count: number;
+  knowledge_indexed_count: number;
+  creative_memory_context: string;
+  hints: Record<string, unknown>;
+  knowledge_hits: CreativeMemoryHit[];
+  learning_report: Record<string, unknown>;
+}
+
+export interface BatchVariant {
+  index: number;
+  topic: string;
+  content_angle: string;
+  hook_hint: string;
+  pipeline_id?: string | null;
+  pipeline_status?: string | null;
+}
+
+export interface BatchCostEstimate {
+  quantity: number;
+  credit_cost_per_pipeline: number;
+  total_credit_cost: number;
+  monthly_quota: number;
+  monthly_used: number;
+  monthly_remaining: number | null;
+  concurrent_limit: number;
+  concurrent_active: number;
+  quota_ok: boolean;
+  credits_ok: boolean;
+}
+
+export interface ContentBatch {
+  id: string;
+  project_id: string;
+  org_id: string | null;
+  topic: string;
+  workflow_name: string | null;
+  quantity: number;
+  status: string;
+  require_approval: boolean;
+  variants: BatchVariant[];
+  estimated_credit_cost: number;
+  publish_approved_at: string | null;
+  created_at: string;
+}
+
+export interface BatchPlan {
+  topic: string;
+  workflow_name: string | null;
+  quantity: number;
+  require_approval: boolean;
+  variants: BatchVariant[];
+}
+
+export interface PlatformAnalyticsInfo {
+  platform: string;
+  oauth_available: boolean;
+  analytics_scopes: string[];
+  connected_channels: number;
+}
+
+export interface PlatformMediaMetrics {
+  platform: string;
+  external_media_id?: string | null;
+  title?: string | null;
+  views: number;
+  likes: number;
+  comments: number;
+  shares: number;
+  watch_time_seconds?: number | null;
+  engagement_rate?: number | null;
+  published_at?: string | null;
+  url?: string | null;
+}
+
+export interface PlatformAnalyticsReport {
+  platform: string;
+  channel_id: string;
+  channel_name: string;
+  synced: boolean;
+  media_items: PlatformMediaMetrics[];
+  channel_totals: Record<string, unknown>;
+  needs_reconnect: boolean;
+  error?: string | null;
+}
+
+export interface PlatformSyncResult {
+  project_id: string;
+  reports: PlatformAnalyticsReport[];
+  snapshots_saved: number;
+}
+
+export interface PlatformAnalyticsSnapshot {
+  id: string;
+  project_id: string;
+  channel_id: string | null;
+  platform: string;
+  external_media_id: string | null;
+  title: string | null;
+  metrics: PlatformMediaMetrics;
+  channel_totals: Record<string, unknown> | null;
+  fetched_at: string | null;
+}
+
+export interface PlatformAnalyticsSummary {
+  platforms: Array<{
+    platform: string;
+    media_count: number;
+    total_views: number;
+    total_likes: number;
+    total_comments: number;
+  }>;
+  snapshot_count: number;
+}
+
+export interface PerformanceMediaInsight {
+  platform: string;
+  external_media_id?: string | null;
+  title?: string | null;
+  topic: string;
+  views: number;
+  likes: number;
+  comments: number;
+  shares: number;
+  ctr?: number | null;
+  engagement_rate?: number | null;
+  retention_pct?: number | null;
+  predicted_retention_pct?: number | null;
+  retention_delta?: number | null;
+  performance_tier: string;
+  pipeline_id?: string | null;
+  hook_text?: string | null;
+  learnings: string[];
+}
+
+export interface PerformanceLearningReport {
+  project_id: string;
+  media_insights: PerformanceMediaInsight[];
+  top_performers: PerformanceMediaInsight[];
+  kb_indexed_count: number;
+  memory_applied: boolean;
+  memory_updates: string[];
+  summary: string;
+}
+
+export interface PerformanceInsightRow {
+  id: string;
+  project_id: string;
+  platform: string;
+  external_media_id: string | null;
+  pipeline_id: string | null;
+  title: string | null;
+  topic: string;
+  ctr: number | null;
+  engagement_rate: number | null;
+  retention_pct: number | null;
+  retention_delta: number | null;
+  views: number;
+  likes: number;
+  comments: number;
+  performance_tier: string;
+  learnings: string[];
+  kb_indexed: boolean;
+  created_at: string | null;
+}
+
+export interface ContentRecommendation {
+  kind: string;
+  title: string;
+  detail: string;
+  confidence: string;
+  source: string;
+  action_href: string;
+}
+
+export interface ContentRecommendationReport {
+  project_id: string;
+  summary: string;
+  recommendations: ContentRecommendation[];
+}
+
+export interface CommentMediaAnalysis {
+  platform: string;
+  external_media_id?: string | null;
+  title?: string | null;
+  comment_count: number;
+  positive_pct: number;
+  negative_pct: number;
+  neutral_pct: number;
+  question_count: number;
+  themes: string[];
+  sample_comments: string[];
+  error?: string | null;
+}
+
+export interface CommentAnalysisReport {
+  project_id: string;
+  media_analyses: CommentMediaAnalysis[];
+  total_comments: number;
+  kb_indexed_count: number;
+  summary: string;
+}
+
+export interface CommentInsightRow {
+  id: string;
+  project_id: string;
+  platform: string;
+  external_media_id: string | null;
+  title: string | null;
+  comment_count: number;
+  positive_pct: number;
+  negative_pct: number;
+  neutral_pct: number;
+  question_count: number;
+  themes: string[];
+  sample_comments: string[];
+  error: string | null;
+  kb_indexed: boolean;
+  created_at: string | null;
+}
+
+export interface CommunityReplyDraft {
+  draft_id?: string | null;
+  platform: string;
+  external_media_id?: string | null;
+  media_title?: string | null;
+  original_comment: string;
+  comment_author?: string | null;
+  draft_reply: string;
+  category: string;
+  sentiment: string;
+  priority: number;
+  status: string;
+}
+
+export interface CommunityDraftReport {
+  project_id: string;
+  drafts: CommunityReplyDraft[];
+  drafts_created: number;
+  auto_post: boolean;
+  summary: string;
+}
+
+export interface CommunityDraftRow {
+  id: string;
+  project_id: string;
+  platform: string;
+  external_media_id: string | null;
+  media_title: string | null;
+  original_comment: string;
+  comment_author: string | null;
+  draft_reply: string;
+  category: string;
+  sentiment: string;
+  priority: number;
+  status: string;
+  created_at: string | null;
+  updated_at: string | null;
 }
 
 export interface SpecialistProfile {
@@ -521,6 +920,33 @@ export interface ExecutiveSummary {
   hook_patterns: string[];
   latest_learning_topic: string | null;
   modules: ExecutiveModuleStatus[];
+  factory_batches_total: number;
+  factory_batches_running: number;
+  factory_pending_approval: number;
+  platform_snapshots: number;
+  performance_insights: number;
+  comment_insights: number;
+  community_drafts_pending: number;
+  oauth_channels_connected: number;
+  alerts: string[];
+  slo_items: SloStatusItem[];
+  v5_modules: ExecutiveModuleStatus[];
+}
+
+export interface SloStatusItem {
+  id: string;
+  name: string;
+  state: "ok" | "warning" | "critical" | "unknown";
+  target: string;
+  current: string;
+  runbook_id: string;
+  message: string;
+}
+
+export interface SloReportResponse {
+  evaluated_at: string;
+  items: SloStatusItem[];
+  summary: { ok: number; warning: number; critical: number };
 }
 
 export interface CostOverview {
@@ -766,10 +1192,27 @@ export interface PublishPlatformStatus {
 export interface PublishStatus {
   publish_mode: string;
   live_enabled: boolean;
+  prepare_only_enabled?: boolean;
+  dry_run_enabled?: boolean;
+  publish_require_qa?: boolean;
   configured_oauth_platforms: string[];
   enabled_platforms: string[];
   platforms: PublishPlatformStatus[];
   project_id: string | null;
+}
+
+export interface PlatformPublicationAttempt {
+  id: string;
+  project_id: string;
+  pipeline_id: string | null;
+  platform: string;
+  publish_mode: string;
+  status: string;
+  title: string | null;
+  external_id: string | null;
+  publish_url: string | null;
+  error: string | null;
+  created_at: string | null;
 }
 
 export interface PublishChannelStatus {
@@ -885,6 +1328,84 @@ export const api = {
       method: "POST",
       body: JSON.stringify(body),
     }),
+  analyzeRetention: (body: {
+    project_id: string;
+    topic?: string;
+    pipeline_id?: string;
+    payload?: Record<string, unknown>;
+  }) =>
+    fetchApi<RetentionReport>("/api/v1/retention/analyze", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  optimizeSeo: (body: {
+    project_id: string;
+    topic?: string;
+    pipeline_id?: string;
+    payload?: Record<string, unknown>;
+  }) =>
+    fetchApi<SeoPackage>("/api/v1/seo/optimize", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  planDirector: (body: {
+    project_id: string;
+    topic?: string;
+    pipeline_id?: string;
+    payload?: Record<string, unknown>;
+  }) =>
+    fetchApi<DirectorDecision>("/api/v1/director/plan", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  mergeCreativeMemory: (body: {
+    project_id: string;
+    topic?: string;
+    pipeline_id?: string;
+    payload?: Record<string, unknown>;
+  }) =>
+    fetchApi<CreativeMemoryReport>("/api/v1/creative-memory/merge", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  planFactoryBatch: (body: {
+    topic: string;
+    quantity?: number;
+    workflow_name?: string | null;
+    require_approval?: boolean | null;
+    angles?: string[];
+  }) =>
+    fetchApi<BatchPlan>("/api/v1/factory/plan", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  estimateFactoryBatch: (body: { project_id: string; quantity?: number }) =>
+    fetchApi<BatchCostEstimate>("/api/v1/factory/batches/estimate", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  createFactoryBatch: (body: {
+    project_id: string;
+    topic: string;
+    quantity?: number;
+    workflow_name?: string | null;
+    require_approval?: boolean | null;
+    angles?: string[];
+    auto_start?: boolean;
+  }) =>
+    fetchApi<ContentBatch>("/api/v1/factory/batches", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  listFactoryBatches: (projectId: string) =>
+    fetchApi<ContentBatch[]>(`/api/v1/factory/batches?project_id=${projectId}`),
+  getFactoryBatch: (batchId: string) => fetchApi<ContentBatch>(`/api/v1/factory/batches/${batchId}`),
+  startFactoryBatch: (batchId: string) =>
+    fetchApi<ContentBatch>(`/api/v1/factory/batches/${batchId}/start`, { method: "POST" }),
+  approveFactoryBatchPublish: (batchId: string) =>
+    fetchApi<ContentBatch>(`/api/v1/factory/batches/${batchId}/approve-publish`, {
+      method: "POST",
+    }),
   listSpecialists: (includeUpcoming = false) =>
     fetchApi<SpecialistProfile[]>(`/api/v1/specialists?include_upcoming=${includeUpcoming}`),
   selectSpecialist: (body: {
@@ -938,6 +1459,45 @@ export const api = {
     }),
   getLearningInsights: (projectId: string, limit = 50) =>
     fetchApi<LearningReport[]>(`/api/v1/learning/insights?project_id=${projectId}&limit=${limit}`),
+  processPerformanceLearning: (body: {
+    project_id: string;
+    persist?: boolean;
+    index_kb?: boolean | null;
+  }) =>
+    fetchApi<PerformanceLearningReport>("/api/v1/performance-learning/process", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  getPerformanceLearningInsights: (projectId: string, limit = 50) =>
+    fetchApi<PerformanceInsightRow[]>(
+      `/api/v1/performance-learning/insights?project_id=${projectId}&limit=${limit}`
+    ),
+  getProjectRecommendations: (projectId: string) =>
+    fetchApi<ContentRecommendationReport>(`/api/v1/projects/${projectId}/recommendations`),
+  analyzeComments: (body: { project_id: string; persist?: boolean; index_kb?: boolean | null }) =>
+    fetchApi<CommentAnalysisReport>("/api/v1/comment-analyzer/analyze", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  getCommentInsights: (projectId: string, limit = 50) =>
+    fetchApi<CommentInsightRow[]>(
+      `/api/v1/comment-analyzer/insights?project_id=${projectId}&limit=${limit}`
+    ),
+  generateCommunityDrafts: (body: { project_id: string; persist?: boolean; max_drafts?: number }) =>
+    fetchApi<CommunityDraftReport>("/api/v1/community/drafts/generate", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  getCommunityDrafts: (projectId: string, status?: string, limit = 50) => {
+    const params = new URLSearchParams({ project_id: projectId, limit: String(limit) });
+    if (status) params.set("status", status);
+    return fetchApi<CommunityDraftRow[]>(`/api/v1/community/drafts?${params}`);
+  },
+  updateCommunityDraftStatus: (draftId: string, status: "draft" | "approved" | "dismissed") =>
+    fetchApi<{ id: string; status: string; draft_reply: string; auto_post: boolean }>(
+      `/api/v1/community/drafts/${draftId}`,
+      { method: "PATCH", body: JSON.stringify({ status }) }
+    ),
   forecastTrend: (body: {
     project_id: string;
     topic: string;
@@ -958,6 +1518,7 @@ export const api = {
     ),
   getExecutiveSummary: (projectId: string) =>
     fetchApi<ExecutiveSummary>(`/api/v1/executive/summary?project_id=${projectId}`),
+  getSloReport: () => fetchApi<SloReportResponse>("/api/v1/ops/slo"),
   createProject: (name: string, description?: string) =>
     fetchApi<Project>("/api/v1/projects", {
       method: "POST",
@@ -1022,6 +1583,27 @@ export const api = {
     }),
   getPerformance: () => fetchApi<{ by_step: Record<string, Record<string, number>> }>("/api/v1/analytics/performance"),
   getProviderAnalytics: () => fetchApi<ProviderAnalyticsResponse>("/api/v1/analytics/providers"),
+  getPlatformAnalyticsCapabilities: (projectId: string) =>
+    fetchApi<PlatformAnalyticsInfo[]>(`/api/v1/analytics/platforms?project_id=${projectId}`),
+  syncPlatformAnalytics: (body: {
+    project_id: string;
+    platforms?: string[];
+    limit?: number;
+    persist?: boolean;
+  }) =>
+    fetchApi<PlatformSyncResult>("/api/v1/analytics/platforms/sync", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  getPlatformAnalyticsSnapshots: (projectId: string, platform?: string, limit = 50) => {
+    const params = new URLSearchParams({ project_id: projectId, limit: String(limit) });
+    if (platform) params.set("platform", platform);
+    return fetchApi<PlatformAnalyticsSnapshot[]>(`/api/v1/analytics/platforms/snapshots?${params}`);
+  },
+  getPlatformAnalyticsSummary: (projectId: string, limit = 100) =>
+    fetchApi<PlatformAnalyticsSummary>(
+      `/api/v1/analytics/platforms/summary?project_id=${projectId}&limit=${limit}`
+    ),
   getAgents: () => fetchApi<AgentStats[]>("/api/v1/agents"),
   getAgent: (name: string) => fetchApi<AgentStats>(`/api/v1/agents/${name}`),
   getSystemMetrics: () => fetchApi<SystemMetrics>("/api/v1/metrics/system"),
@@ -1105,6 +1687,21 @@ export const api = {
     params.set("limit", String(limit));
     return fetchApi<Asset[]>(`/api/v1/assets/search?${params.toString()}`);
   },
+  searchAssetsSemantic: (
+    filters: {
+      q: string;
+      category?: string;
+      limit?: number;
+      min_similarity?: number;
+    }
+  ) => {
+    const params = new URLSearchParams();
+    params.set("q", filters.q);
+    if (filters.category) params.set("category", filters.category);
+    params.set("limit", String(filters.limit ?? 50));
+    if (filters.min_similarity != null) params.set("min_similarity", String(filters.min_similarity));
+    return fetchApi<AssetSemanticSearchResponse>(`/api/v1/assets/search/semantic?${params.toString()}`);
+  },
   tagAsset: (id: string, tags: string[]) =>
     fetchApi<Asset>(`/api/v1/assets/${id}/tags`, {
       method: "POST",
@@ -1131,6 +1728,91 @@ export const api = {
     };
   },
   getAssetIndexStats: () => fetchApi<StorageStats & { indexed_hashes: number }>("/api/v1/assets/index/stats"),
+  getVoiceProfiles: (projectId?: string) =>
+    fetchApi<VoiceProfile[]>(
+      `/api/v1/voice-profiles${projectId ? `?project_id=${projectId}` : ""}`
+    ),
+  getBuiltinVoiceProfiles: () => fetchApi<VoiceProfile[]>("/api/v1/voice-profiles/builtins"),
+  createVoiceProfile: (body: {
+    name: string;
+    project_id?: string;
+    provider?: string;
+    voice_id?: string;
+    speed?: number;
+    pitch_semitones?: number;
+    pause_ms?: number;
+    is_default?: boolean;
+  }) =>
+    fetchApi<VoiceProfile>("/api/v1/voice-profiles", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  patchVoiceProfile: (
+    profileId: string,
+    body: Partial<{
+      name: string;
+      provider: string;
+      voice_id: string;
+      speed: number;
+      pitch_semitones: number;
+      pause_ms: number;
+      is_default: boolean;
+    }>
+  ) =>
+    fetchApi<VoiceProfile>(`/api/v1/voice-profiles/${profileId}`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
+  previewVoiceProfile: async (body: {
+    text: string;
+    profile_id?: string;
+    builtin_name?: string;
+    provider?: string;
+    voice_id?: string;
+    speed?: number;
+    pitch_semitones?: number;
+    pause_ms?: number;
+  }): Promise<string> => {
+    const token = getAccessToken();
+    const orgId = getOrganizationId();
+    const res = await fetch(`${API}/api/v1/voice-profiles/preview`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...(orgId ? { "X-Organization-Id": orgId } : {}),
+      },
+      body: JSON.stringify(body),
+      cache: "no-store",
+    });
+    if (res.status === 401) {
+      clearAccessTokens();
+      throw new Error("API 401: Faça login novamente para continuar.");
+    }
+    if (!res.ok) throw new Error(`API ${res.status}: ${await res.text()}`);
+    const blob = await res.blob();
+    return URL.createObjectURL(blob);
+  },
+  getProjectVoiceLibrary: (projectId: string) =>
+    fetchApi<VoiceLibrary>(`/api/v1/projects/${projectId}/voice-library`),
+  setProjectVoiceDefault: (
+    projectId: string,
+    body: { profile_id?: string; builtin_name?: string }
+  ) =>
+    fetchApi<VoiceLibrary>(`/api/v1/projects/${projectId}/voice-library/default`, {
+      method: "PUT",
+      body: JSON.stringify(body),
+    }),
+  cloneBuiltinVoiceProfile: (
+    projectId: string,
+    body: { builtin_name: string; name?: string; make_default?: boolean }
+  ) =>
+    fetchApi<VoiceProfile>(`/api/v1/projects/${projectId}/voice-library/clone`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  deleteVoiceProfile: (profileId: string) =>
+    fetchApi<void>(`/api/v1/voice-profiles/${profileId}`, { method: "DELETE" }),
   getChannels: (projectId?: string) =>
     fetchApi<Channel[]>(`/api/v1/channels${projectId ? `?project_id=${projectId}` : ""}`),
   createChannel: (projectId: string, platform: string, name: string, credentials?: object) =>
@@ -1176,6 +1858,11 @@ export const api = {
     ),
   getPublishChannels: (projectId: string) =>
     fetchApi<PublishChannelStatus[]>(`/api/v1/publish/channels?project_id=${projectId}`),
+  getPublishAttempts: (projectId: string, pipelineId?: string, limit = 50) => {
+    const params = new URLSearchParams({ project_id: projectId, limit: String(limit) });
+    if (pipelineId) params.set("pipeline_id", pipelineId);
+    return fetchApi<PlatformPublicationAttempt[]>(`/api/v1/publish/attempts?${params}`);
+  },
   startOAuth: (platform: string, projectId: string, channelName?: string) =>
     fetchApi<OAuthStartResponse>(`/api/v1/oauth/${platform}/start`, {
       method: "POST",

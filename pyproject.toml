@@ -21,6 +21,7 @@ pythonpath = [
     "packages/content-sources/src",
     "packages/database/src",
     "packages/storage/src",
+    "packages/intelligence/src",
     "apps/backend/src",
     "services/workflow-engine/src",
     "services/agents-worker/src",
@@ -28,6 +29,7 @@ pythonpath = [
 ]
 markers = [
     "integration: tests requiring PostgreSQL",
+    "ffmpeg: tests requiring ffmpeg/ffprobe on PATH",
 ]
 
 [tool.ruff]

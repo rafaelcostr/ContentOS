@@ -23,6 +23,12 @@ class SceneDirectorAgentHandler(BaseAgentHandler):
         emotion = coerce_dict(
             task_input.payload.get("emotion_scores") or task_input.payload.get("emotion")
         )
+        project_dna = coerce_dict(task_input.payload.get("project_dna"))
+        content_angle = str(
+            task_input.payload.get("content_angle")
+            or project_dna.get("content_angle")
+            or ""
+        )
         script = coerce_dict(task_input.payload.get("script"))
         topic = (
             script.get("title")
@@ -52,6 +58,7 @@ class SceneDirectorAgentHandler(BaseAgentHandler):
             storyboard=storyboard,
             scenes=scenes,
             emotion=emotion,
+            content_angle=content_angle,
         )
         logs.append(
             f"Plan pacing={director_plan['pacing']} energy={director_plan['energy']} "

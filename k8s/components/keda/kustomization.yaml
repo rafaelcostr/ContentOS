@@ -3,3 +3,4 @@ kind: Component
 
 resources:
   - scaledobjects.yaml
+  - scaledobjects-v5.yaml

@@ -42,6 +42,13 @@ def quality_min_score() -> int:
         return 6
 
 
+def quality_min_bitrate_bps() -> int:
+    try:
+        return max(0, int(os.getenv("QUALITY_MIN_BITRATE_BPS", "1000000")))
+    except ValueError:
+        return 1_000_000
+
+
 def _dim(name: str, passed: bool, *, detail: str = "", partial_score: int | None = None) -> QualityDimension:
     if partial_score is not None:
         score = max(0, min(10, partial_score))
@@ -82,6 +89,11 @@ def build_quality_report(
     codec: str = "",
     fps: float = 0.0,
     duration: float = 0.0,
+    has_real_clips: bool | None = None,
+    missing_clip_count: int = 0,
+    has_narration_audio: bool | None = None,
+    subtitle_sync_ok: bool | None = None,
+    bit_rate: int | None = None,
     extra_errors: list[str] | None = None,
 ) -> QualityReport:
     """Aggregate technical checks into a 0–10 score and pass/fail."""
@@ -142,6 +154,9 @@ def build_quality_report(
         errors.append(f"Duration exceeds 60s: {duration:.1f}s")
 
     sub_ok = has_subtitles or subtitle_sync_skipped
+    if subtitle_sync_ok is False:
+        sub_ok = False
+        errors.append("Subtitle timing out of sync with segment list")
     dims.append(
         _dim(
             "subtitles",
@@ -151,6 +166,39 @@ def build_quality_report(
     )
     if not has_subtitles and not subtitle_sync_skipped:
         errors.append("Missing subtitles")
+    if subtitle_sync_ok is False:
+        dims.append(_dim("subtitle_sync", False, detail="SRT drift exceeds tolerance"))
+
+    if bit_rate is not None and bit_rate > 0:
+        min_bitrate = quality_min_bitrate_bps()
+        bitrate_ok = bit_rate >= min_bitrate
+        dims.append(
+            _dim(
+                "bitrate",
+                bitrate_ok,
+                detail=f"{bit_rate // 1000}kbps" if bitrate_ok else f"{bit_rate // 1000}kbps (<{min_bitrate // 1000}kbps)",
+            )
+        )
+        if not bitrate_ok:
+            errors.append(f"Bitrate below minimum: {bit_rate} bps")
+
+    if has_real_clips is not None:
+        dims.append(
+            _dim(
+                "real_clips",
+                has_real_clips,
+                detail="all scenes use real clips" if has_real_clips else f"{missing_clip_count} placeholder scenes",
+            )
+        )
+
+    if has_narration_audio is not None:
+        dims.append(
+            _dim(
+                "narration",
+                has_narration_audio,
+                detail="narration audio present" if has_narration_audio else "silent/generated audio",
+            )
+        )
 
     if dims:
         score = round(sum(d.score for d in dims) / len(dims))
@@ -174,6 +222,14 @@ def build_quality_report(
         suggestions.append("Ajustar duração entre 15s e 60s")
     if dim_map.get("subtitles") and not dim_map["subtitles"].passed:
         suggestions.append("Regenerar legendas sincronizadas")
+    if dim_map.get("subtitle_sync") and not dim_map["subtitle_sync"].passed:
+        suggestions.append("Revisar timestamps SRT vs segmentos de narração")
+    if dim_map.get("bitrate") and not dim_map["bitrate"].passed:
+        suggestions.append("Aumentar bitrate do render (CRF/preset no editor)")
+    if dim_map.get("real_clips") and not dim_map["real_clips"].passed:
+        suggestions.append("Substituir cenas placeholder por clipes reais")
+    if dim_map.get("narration") and not dim_map["narration"].passed:
+        suggestions.append("Regenerar narração antes do render final")
     if critical:
         suggestions.append("Re-renderizar vídeo no editor antes de continuar")
 

@@ -26,6 +26,8 @@ scene completes
 |----|---------|-------------|
 | `local_library` | LocalLibrarySource | MinIO `takes/` prefix |
 | `own_library` | OwnLibrarySource | Project assets in PostgreSQL |
+| `pexels` | PexelsSource | Pexels Video API (V5.0 — royalty_free) |
+| `pixabay` | PixabaySource | Pixabay Video API (V5.0 — royalty_free) |
 | `rss` | RSSSource | RSS feed metadata (`CONTENT_SOURCE_RSS_URL`) |
 | `gameplay` | GameplaySource | Filtered gameplay takes |
 | `licensed_trailers` | LicensedTrailerSource | Stub for licensed catalog |
@@ -44,10 +46,15 @@ scene completes
 
 ```env
 ENABLE_V2_CLIP_PIPELINE=false
-CONTENT_SOURCES_ENABLED=local_library,own_library
-CONTENT_SOURCE_RSS_URL=
-CONTENT_SOURCE_CUSTOM_JSON=[]
+CONTENT_SOURCES_ENABLED=local_library,own_library,pexels,pixabay
+PEXELS_API_KEY=
+PIXABAY_API_KEY=
+MEDIA_MAX_DOWNLOAD_MB=50
+MEDIA_ALLOWED_LICENSES=royalty_free,creative_commons
+MEDIA_COLLECT_TOP_N=3
 ```
+
+See [MEDIA_PIPELINE.md](./MEDIA_PIPELINE.md) for V5.0 acquisition details.
 
 ## Database
 

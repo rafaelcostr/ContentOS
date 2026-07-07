@@ -13,6 +13,8 @@ class PublishContext:
     script: dict[str, Any]
     base_metadata: dict[str, Any]
     render_ref: dict[str, Any] | None = None
+    render_bytes: bytes | None = None
+    render_public_url: str | None = None
     credentials: dict[str, dict[str, Any]] = field(default_factory=dict)
 
 

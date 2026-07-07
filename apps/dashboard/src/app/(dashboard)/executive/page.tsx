@@ -30,9 +30,9 @@ export default function ExecutiveDashboardPage() {
   return (
     <div className="p-8">
       <header className="mb-8">
-        <h1 className="text-2xl font-bold tracking-tight">Executive Dashboard</h1>
+        <h1 className="text-2xl font-bold tracking-tight">Command Center</h1>
         <p className="text-sm text-muted-foreground">
-          Visão unificada V4 — Viral, KB, DNA, Score, A/B, Trend, Specialists, Learning, Graph (V4.3.2)
+          Visão unificada V4 + V5 — produção, qualidade, OAuth, SLO e comunidade (V5.5.3)
         </p>
       </header>
 
@@ -51,24 +51,84 @@ export default function ExecutiveDashboardPage() {
         </select>
       </div>
 
-      {isLoading && <p className="text-sm text-muted-foreground">Carregando resumo executivo…</p>}
+      {isLoading && <p className="text-sm text-muted-foreground">Carregando Command Center…</p>}
 
       {summary && (
         <>
-          <div className="mb-8 grid grid-cols-2 gap-4 md:grid-cols-4 lg:grid-cols-6">
-            <StatCard label="Pipelines" value={summary.pipelines_completed} sub={`${summary.pipelines_total} total`} />
-            <StatCard label="KB" value={summary.knowledge_entries} sub="entradas" />
-            <StatCard label="Learning" value={summary.learning_insights} sub="insights" />
-            <StatCard label="Grafo" value={summary.graph_nodes} sub={`${summary.graph_edges} arestas`} />
-            <StatCard
-              label="Content Score"
-              value={summary.avg_content_score != null ? summary.avg_content_score.toFixed(0) : "—"}
-            />
-            <StatCard
-              label="Trend"
-              value={summary.latest_trend_score != null ? summary.latest_trend_score.toFixed(0) : "—"}
-              sub={summary.latest_trend_growth ?? ""}
-            />
+          {summary.alerts?.length > 0 && (
+            <section className="mb-6 space-y-2">
+              {summary.alerts.map((alert) => (
+                <p
+                  key={alert}
+                  className="rounded-md border border-amber-500/40 bg-amber-500/10 px-4 py-2 text-sm text-amber-800 dark:text-amber-200"
+                >
+                  {alert}
+                </p>
+              ))}
+            </section>
+          )}
+
+          {summary.slo_items?.length > 0 && (
+            <section className="mb-8">
+              <h2 className="mb-3 text-sm font-semibold">SLO — Plataforma</h2>
+              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                {summary.slo_items.map((slo) => (
+                  <div
+                    key={slo.id}
+                    className={`rounded-md border px-3 py-2 text-sm ${
+                      slo.state === "critical"
+                        ? "border-red-500/40 bg-red-500/10"
+                        : slo.state === "warning"
+                          ? "border-amber-500/40 bg-amber-500/10"
+                          : "border-border bg-card"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-medium">{slo.name}</span>
+                      <span className="text-xs uppercase text-muted-foreground">{slo.state}</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {slo.current} · meta {slo.target}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
+          <div className="mb-4">
+            <h2 className="mb-3 text-sm font-semibold">KPIs V5 — Pós-publicação</h2>
+            <div className="grid grid-cols-2 gap-4 md:grid-cols-4 lg:grid-cols-6">
+              <StatCard label="Lotes" value={summary.factory_batches_total} sub={`${summary.factory_batches_running} ativos`} />
+              <StatCard label="OAuth snapshots" value={summary.platform_snapshots} sub={`${summary.oauth_channels_connected} canais`} />
+              <StatCard label="Perf. Learning" value={summary.performance_insights} sub="insights" />
+              <StatCard label="Comentários" value={summary.comment_insights} sub="análises" />
+              <StatCard label="Rascunhos" value={summary.community_drafts_pending} sub="comunidade" />
+              <StatCard
+                label="Aprovação lote"
+                value={summary.factory_pending_approval}
+                sub={summary.factory_pending_approval > 0 ? "ação necessária" : "ok"}
+              />
+            </div>
+          </div>
+
+          <div className="mb-8">
+            <h2 className="mb-3 text-sm font-semibold">KPIs V4 — Inteligência</h2>
+            <div className="grid grid-cols-2 gap-4 md:grid-cols-4 lg:grid-cols-6">
+              <StatCard label="Pipelines" value={summary.pipelines_completed} sub={`${summary.pipelines_total} total`} />
+              <StatCard label="KB" value={summary.knowledge_entries} sub="entradas" />
+              <StatCard label="Learning" value={summary.learning_insights} sub="insights" />
+              <StatCard label="Grafo" value={summary.graph_nodes} sub={`${summary.graph_edges} arestas`} />
+              <StatCard
+                label="Content Score"
+                value={summary.avg_content_score != null ? summary.avg_content_score.toFixed(0) : "—"}
+              />
+              <StatCard
+                label="Trend"
+                value={summary.latest_trend_score != null ? summary.latest_trend_score.toFixed(0) : "—"}
+                sub={summary.latest_trend_growth ?? ""}
+              />
+            </div>
           </div>
 
           {summary.dna_preview && (
@@ -80,6 +140,17 @@ export default function ExecutiveDashboardPage() {
                   Hooks: {summary.hook_patterns.join(" · ")}
                 </p>
               )}
+            </section>
+          )}
+
+          {summary.v5_modules?.length > 0 && (
+            <section className="mb-8">
+              <h2 className="mb-4 text-sm font-semibold">Módulos V5</h2>
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                {summary.v5_modules.map((mod) => (
+                  <ModuleCard key={mod.key} module={mod} />
+                ))}
+              </div>
             </section>
           )}
 

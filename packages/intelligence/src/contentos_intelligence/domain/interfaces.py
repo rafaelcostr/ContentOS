@@ -9,6 +9,7 @@ from contentos_intelligence.domain.context import IntelligenceContext
 from contentos_intelligence.domain.knowledge import KnowledgeHit, KnowledgeQueryRequest
 from contentos_intelligence.domain.reuse_suggestion import ReuseSuggestion
 from contentos_intelligence.domain.specialist import SpecialistSelection
+from contentos_intelligence.domain.take_recommendation import SceneTakeQuery, TakeRankResult
 from contentos_intelligence.domain.viral_report import ViralReport
 
 
@@ -66,3 +67,30 @@ class IEmbeddingClient(Protocol):
     """Embedding vectors via AI Gateway (Epic 3 infrastructure)."""
 
     async def embed(self, texts: list[str]) -> list[list[float]]: ...
+
+
+@runtime_checkable
+class ITakeRecommender(Protocol):
+    """V5.0.4 — rank video takes per scene using multi-signal scoring."""
+
+    @property
+    def enabled(self) -> bool: ...
+
+    async def rank_scene(
+        self,
+        query: SceneTakeQuery,
+        assets: list,
+        *,
+        collected_match: dict | None = None,
+        used_asset_keys: set[str] | None = None,
+        embeddings: dict[str, list[float]] | None = None,
+    ) -> list[TakeRankResult]: ...
+
+    async def recommend_scenes(
+        self,
+        *,
+        topic: str,
+        scenes: list[dict],
+        assets: list,
+        collected: list[dict] | None = None,
+    ) -> list[dict]: ...

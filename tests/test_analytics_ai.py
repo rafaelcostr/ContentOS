@@ -16,13 +16,16 @@ def test_collect_metrics_from_publication():
                 "hashtags": ["ai", "tech"],
                 "platforms": {
                     "tiktok": {"views": 1200, "likes": 85},
-                    "youtube": {"view_count": 500, "like_count": 40},
+                    "youtube": {"view_count": 500, "like_count": 40, "comment_count": 5, "share_count": 3},
                 },
             },
         }
     )
     assert metrics["views"] == 1700
     assert metrics["likes"] == 125
+    assert metrics["comments"] == 5
+    assert metrics["shares"] == 3
+    assert metrics["engagement_rate"] == 0.0782
     assert metrics["source"] == "platform"
     assert metrics["title"] == "AI trends 2026"
 
@@ -44,6 +47,7 @@ def test_insight_data_to_dict():
     )
     d = data.to_dict()
     assert d["pipeline_id"] == str(pid)
+    assert d["performance_feedback"] == {}
     assert d["score"] == 78
     assert d["summary"] == "Good hook"
 

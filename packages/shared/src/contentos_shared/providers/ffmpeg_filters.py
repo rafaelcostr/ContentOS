@@ -20,6 +20,8 @@ class SceneSegment:
     fade_in: float | None = None
     fade_out: float | None = None
     crop_bias: str = "center"
+    playback_speed: float = 1.0
+    speed_ramp_end: float | None = None
 
 
 @dataclass
@@ -35,6 +37,24 @@ class RenderSpec:
     fade_duration: float = 0.4
     music_volume: float = 0.12
     progress_bar_height: int = 8
+    enable_ducking: bool = True
+    ducking_ratio: float = 8.0
+    ducking_threshold: float = 0.03
+
+
+def speed_filter_expr(segment: SceneSegment | None, duration: float, fps: int) -> str | None:
+    """Return setpts expression for constant or ramped playback speed."""
+    if not segment:
+        return None
+    start = max(0.5, min(2.0, float(segment.playback_speed or 1.0)))
+    end_raw = segment.speed_ramp_end
+    if end_raw is None or abs(float(end_raw) - start) < 0.02:
+        if abs(start - 1.0) < 0.02:
+            return None
+        return f"setpts=PTS/{start:.4f}"
+    end = max(0.5, min(2.0, float(end_raw)))
+    frames = max(1, int(duration * fps))
+    return f"setpts='PTS/({start:.4f}+({end:.4f}-{start:.4f})*on/{frames})'"
 
 
 def scene_video_filter(spec: RenderSpec, duration: float, segment: SceneSegment | None = None) -> str:
@@ -58,6 +78,9 @@ def scene_video_filter(spec: RenderSpec, duration: float, segment: SceneSegment 
     }.get((segment.crop_bias if segment else "center") or "center", f"(ih-{h})/2")
 
     base = f"scale={w}:{h}:force_original_aspect_ratio=increase,crop={w}:{h}:x=(iw-{w})/2:y={crop_y},setsar=1"
+    speed_expr = speed_filter_expr(segment, duration, fps)
+    if speed_expr:
+        base += f",{speed_expr}"
     enable_zoom = segment.zoom_enabled if segment and segment.zoom_enabled is not None else spec.enable_zoom
     if enable_zoom:
         zoom_max = segment.zoom_max if segment else 1.12
@@ -112,15 +135,36 @@ def subtitle_and_progress_filter(
     return ",".join(filters)
 
 
-def build_audio_mix_filter(has_music: bool, music_volume: float) -> str:
-    """Mix narration with optional background music (ducked)."""
+def build_audio_mix_filter(
+    has_music: bool,
+    music_volume: float,
+    *,
+    enable_ducking: bool = True,
+    ducking_ratio: float = 8.0,
+    ducking_threshold: float = 0.03,
+) -> str:
+    """Mix narration with optional background music (sidechain ducking when enabled)."""
     if not has_music:
         return "[1:a]loudnorm=I=-16:TP=-1.5:LRA=11[aout]"
     vol = music_volume
+    if enable_ducking:
+        # Voice must feed both the sidechain key and the final mix; an FFmpeg
+        # link label can only be consumed once, so asplit into two copies.
+        return (
+            f"[1:a]aresample=44100,aformat=channel_layouts=mono,"
+            f"loudnorm=I=-16:TP=-1.5:LRA=11:linear=true,"
+            f"asplit=2[voicekey][voicemix];"
+            f"[2:a]aresample=44100,aformat=channel_layouts=mono,volume={vol}[bg];"
+            f"[bg][voicekey]sidechaincompress=threshold={ducking_threshold}:"
+            f"ratio={ducking_ratio}:attack=80:release=500[bgduck];"
+            f"[voicemix][bgduck]amix=inputs=2:duration=first:dropout_transition=2[aout]"
+        )
     return (
-        f"[1:a]loudnorm=I=-16:TP=-1.5:LRA=11[narr];"
-        f"[2:a]volume={vol},afade=t=in:st=0:d=1,afade=t=out:st=0:d=0[bg];"
-        f"[narr][bg]amix=inputs=2:duration=first:dropout_transition=2[aout]"
+        f"[1:a]aresample=44100,aformat=channel_layouts=mono,"
+        f"loudnorm=I=-16:TP=-1.5:LRA=11:linear=true[voice];"
+        f"[2:a]aresample=44100,aformat=channel_layouts=mono,volume={vol},"
+        f"afade=t=in:st=0:d=1,afade=t=out:st=0:d=0[bg];"
+        f"[voice][bg]amix=inputs=2:duration=first:dropout_transition=2[aout]"
     )
 
 

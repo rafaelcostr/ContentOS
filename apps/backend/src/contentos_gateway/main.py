@@ -14,11 +14,16 @@ from contentos_gateway.api.routes import (
     billing,
     cache,
     channels,
+    comment_analyzer,
+    community,
     content_score,
     content_sources,
     costs,
+    creative_memory,
+    director,
     events,
     executive,
+    factory,
     graph,
     health,
     jobs,
@@ -31,8 +36,11 @@ from contentos_gateway.api.routes import (
     models,
     multi_content,
     oauth,
+    ops,
     organizations,
+    performance_learning,
     pipelines,
+    platform_analytics,
     platform_plugins,
     project_dna,
     projects,
@@ -40,16 +48,21 @@ from contentos_gateway.api.routes import (
     prompts,
     providers,
     publish,
+    retention,
     reuse,
     schedules,
+    seo,
     specialists,
     trend,
     videos,
     viral,
+    voice_library,
+    voice_profiles,
     workflow_builder,
 )
 from contentos_gateway.api.websocket import router as ws_router
 from contentos_gateway.config import settings
+from contentos_gateway.middleware.hardening import GatewayHardeningMiddleware
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -139,6 +152,7 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+    app.add_middleware(GatewayHardeningMiddleware)
 
     prefix = "/api/v1"
     app.include_router(prometheus.router)
@@ -156,16 +170,26 @@ def create_app() -> FastAPI:
     app.include_router(viral.router, prefix=prefix)
     app.include_router(ab_variants.router, prefix=prefix)
     app.include_router(content_score.router, prefix=prefix)
+    app.include_router(retention.router, prefix=prefix)
+    app.include_router(seo.router, prefix=prefix)
+    app.include_router(director.router, prefix=prefix)
+    app.include_router(creative_memory.router, prefix=prefix)
+    app.include_router(factory.router, prefix=prefix)
     app.include_router(specialists.router, prefix=prefix)
     app.include_router(multi_content.router, prefix=prefix)
     app.include_router(learning.router, prefix=prefix)
+    app.include_router(performance_learning.router, prefix=prefix)
     app.include_router(trend.router, prefix=prefix)
     app.include_router(graph.router, prefix=prefix)
     app.include_router(executive.router, prefix=prefix)
+    app.include_router(ops.router, prefix=prefix)
     app.include_router(pipelines.router, prefix=prefix)
     app.include_router(jobs.router, prefix=prefix)
     app.include_router(assets.router, prefix=prefix)
+    app.include_router(voice_profiles.router, prefix=prefix)
+    app.include_router(voice_library.router, prefix=prefix)
     app.include_router(analytics.router, prefix=prefix)
+    app.include_router(platform_analytics.router, prefix=prefix)
     app.include_router(agents.router, prefix=prefix)
     app.include_router(videos.router, prefix=prefix)
     app.include_router(logs.router, prefix=prefix)
@@ -181,6 +205,8 @@ def create_app() -> FastAPI:
     app.include_router(marketplace.router, prefix=prefix)
     app.include_router(workflow_builder.router, prefix=prefix)
     app.include_router(channels.router, prefix=prefix)
+    app.include_router(comment_analyzer.router, prefix=prefix)
+    app.include_router(community.router, prefix=prefix)
     app.include_router(oauth.router, prefix=prefix)
     app.include_router(publish.router, prefix=prefix)
     app.include_router(ws_router)

@@ -41,7 +41,7 @@ sequenceDiagram
     W->>EB: research.finished
     W->>Q: enqueue(next)
 
-    Note over W,Q: script → scene → clip_research → asset_collector → asset_index
+    Note over W,Q: script → scene → clip_research → asset_collector → asset_index → media_analyze → asset_search
 
     Q->>A: execute(clip_research)
     A->>CS: search candidates
@@ -69,7 +69,7 @@ sequenceDiagram
 |----------|-------|-----|
 | `v1-default` | 9 | Pipeline clássico (compat) |
 | `v2-full` | 9 + async | V1 + clip/thumbnail/analytics async |
-| `v2-dynamic` | 14 | Pipeline completo da missão |
+| `v2-dynamic` | 16 | Pipeline completo da missão |
 
 ```env
 DEFAULT_WORKFLOW=v1-default
@@ -84,7 +84,7 @@ DEFAULT_WORKFLOW=v1-default
 research → script → scene → takes → voice → subtitle → editor → quality → publisher
 ```
 
-## Pipeline V2 Dynamic (14 steps)
+## Pipeline V2 Dynamic (16 steps)
 
 ```
 research
@@ -98,6 +98,10 @@ clip_research      ← Content Sources (candidatos, sem download)
 asset_collector    ← fetch + MinIO + PostgreSQL (AssetPipelineService)
   ↓
 asset_index        ← tags / indexação
+  ↓
+media_analyze      ← análise IA, perfis de mídia e metadados técnicos
+  ↓
+asset_search       ← busca os melhores assets indexados por cena
   ↓
 takes              ← só seleção (não pesquisa mídia)
   ↓
@@ -153,3 +157,6 @@ Se Quality falhar, o Workflow reenvia **apenas o step com erro**:
 | Excluir | `DELETE /api/v1/pipelines/{id}` | Produção → **Excluir** |
 
 Cancelamento marca jobs como `cancelled` e revoga tasks Celery.
+
+
+

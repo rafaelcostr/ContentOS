@@ -2,6 +2,8 @@
 
 Checklist and manifests for running ContentOS in production.
 
+**Go-live gate:** [PRODUCTION_READY.md](./PRODUCTION_READY.md) (V5.5.5 — checklist final consolidado).
+
 ## Manifests
 
 | Overlay / component | Purpose |
@@ -38,6 +40,11 @@ kubectl apply -k k8s/overlays/production/
 - [ ] KEDA installed, Redis reachable from scalers
 - [ ] `kubectl apply -k k8s/overlays/autoscaling-keda/` or use production overlay
 
+### Gateway hardening (V5.5.4)
+- [ ] `GATEWAY_RATE_LIMIT_ENABLED=true` in production ConfigMap
+- [ ] Readiness probe `/health/ready` (production overlay)
+- [ ] Smoke load test before go-live — [LOAD_TESTING.md](./LOAD_TESTING.md)
+
 ### Quality gates
 - [ ] `QUALITY_MIN_SCORE=6` (technical)
 - [ ] `VIDEO_REVIEW_MIN_SCORE=8` (creative) — [QUALITY.md](./QUALITY.md)
@@ -65,4 +72,8 @@ kubectl apply -k k8s/overlays/production/
 ## Related
 
 - [K8S.md](./K8S.md) — base deploy & worker pools
+- [KEDA_PRODUCTION.md](./KEDA_PRODUCTION.md) — V5 pools & scaler limits (V5.5.2)
+- [SLO_ALERTS_RUNBOOKS.md](./SLO_ALERTS_RUNBOOKS.md) — SLO, Prometheus alerts, runbooks (V5.5.3)
+- [LOAD_TESTING.md](./LOAD_TESTING.md) — smoke load tests + gateway hardening (V5.5.4)
+- [PRODUCTION_READY.md](./PRODUCTION_READY.md) — checklist final go-live (V5.5.5)
 - [DEPLOY_STAGING.md](./DEPLOY_STAGING.md) — CI staging pipeline

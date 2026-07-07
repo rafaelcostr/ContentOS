@@ -58,6 +58,7 @@ export default function PluginsPage() {
     if (oauth === "success" || oauth === "error") {
       queryClient.invalidateQueries({ queryKey: ["publish-status"] });
       queryClient.invalidateQueries({ queryKey: ["publish-channels"] });
+      queryClient.invalidateQueries({ queryKey: ["publish-attempts"] });
     }
   }, [searchParams, queryClient]);
 

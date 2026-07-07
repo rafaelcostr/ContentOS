@@ -42,6 +42,12 @@ def extract_hook(payload: dict) -> tuple[float, str]:
 
 
 def extract_retention(payload: dict) -> tuple[float, str]:
+    retention = payload.get("retention_report")
+    if isinstance(retention, dict) and retention.get("overall_score") is not None:
+        return _clamp_100(retention["overall_score"]), "retention_report.overall_score"
+    score = payload.get("retention_score") or payload.get("retention_prediction")
+    if score is not None:
+        return _clamp_100(score), "retention_score"
     viral = _viral(payload)
     score = viral.get("retention_prediction")
     if score is not None:
@@ -81,7 +87,13 @@ def extract_cta(payload: dict) -> tuple[float, str]:
 
 
 def extract_seo(payload: dict) -> tuple[float, str]:
-    """SEO from multi_content seo_article when available, else heuristics."""
+    """SEO from seo_package, multi_content seo_article, or heuristics."""
+    seo_pkg = payload.get("seo_package") or {}
+    if isinstance(seo_pkg, dict) and seo_pkg.get("title"):
+        score = float(seo_pkg.get("seo_score") or 70.0)
+        if seo_pkg.get("hashtags"):
+            score = min(100.0, score + 5.0)
+        return _clamp_100(score), "seo_package.seo_score"
     multi = payload.get("multi_content") or payload.get("multi_content_report") or {}
     if isinstance(multi, dict):
         by_fmt = multi.get("by_format") or {}

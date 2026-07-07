@@ -40,6 +40,15 @@ class JobStatus(str, enum.Enum):
     CANCELLED = "cancelled"
 
 
+class ContentBatchStatus(str, enum.Enum):
+  PLANNED = "planned"
+  RUNNING = "running"
+  PENDING_PUBLISH_APPROVAL = "pending_publish_approval"
+  COMPLETED = "completed"
+  CANCELLED = "cancelled"
+  FAILED = "failed"
+
+
 class PipelineStatus(str, enum.Enum):
     PENDING = "pending"
     RUNNING = "running"
@@ -221,6 +230,31 @@ class Project(Base):
     videos: Mapped[list["Video"]] = relationship(back_populates="project")
     memory: Mapped["ProjectMemory | None"] = relationship(back_populates="project", uselist=False)
     schedules: Mapped[list["PipelineSchedule"]] = relationship(back_populates="project")
+    content_batches: Mapped[list["ContentBatch"]] = relationship(back_populates="project")
+
+
+class ContentBatch(Base):
+    """N pipelines per topic — Content Factory (V5.3)."""
+
+    __tablename__ = "content_batches"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    project_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("projects.id", ondelete="CASCADE"), index=True)
+    org_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("organizations.id", ondelete="CASCADE"), index=True)
+    topic: Mapped[str] = mapped_column(String(500))
+    workflow_name: Mapped[str | None] = mapped_column(String(80))
+    quantity: Mapped[int] = mapped_column(Integer, default=1)
+    status: Mapped[ContentBatchStatus] = mapped_column(Enum(ContentBatchStatus), default=ContentBatchStatus.PLANNED)
+    require_approval: Mapped[bool] = mapped_column(Boolean, default=False)
+    variants: Mapped[list | None] = mapped_column(JSON)
+    estimated_credit_cost: Mapped[int] = mapped_column(Integer, default=0)
+    publish_approved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    publish_approved_by_user_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
+    created_by_user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+
+    project: Mapped["Project"] = relationship(back_populates="content_batches")
 
 
 class PipelineSchedule(Base):
@@ -260,6 +294,7 @@ class Pipeline(Base):
     current_step: Mapped[str | None] = mapped_column(String(50))
     error_message: Mapped[str | None] = mapped_column(Text)
     retry_count: Mapped[int] = mapped_column(Integer, default=0)
+    context_json: Mapped[dict | None] = mapped_column(JSON)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
 
@@ -361,6 +396,47 @@ class Asset(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
+class AssetMediaProfile(Base):
+    """V5.0.3 — vision analysis and semantic embedding per video asset."""
+
+    __tablename__ = "asset_media_profiles"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    asset_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("assets.id", ondelete="CASCADE"), unique=True, index=True)
+    pipeline_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("pipelines.id", ondelete="SET NULL"))
+    project_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("projects.id", ondelete="SET NULL"))
+    analysis: Mapped[dict | None] = mapped_column(JSON)
+    embedding: Mapped[list | None] = mapped_column(JSON)
+    embedding_model: Mapped[str | None] = mapped_column(String(120))
+    vision_model: Mapped[str | None] = mapped_column(String(120))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+
+
+class VoiceProfile(Base):
+    """V5.1.1 — reusable narration settings (speed, pitch, pause)."""
+
+    __tablename__ = "voice_profiles"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    project_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("projects.id", ondelete="CASCADE"), nullable=True, index=True
+    )
+    org_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("organizations.id", ondelete="CASCADE"), nullable=True, index=True
+    )
+    name: Mapped[str] = mapped_column(String(120))
+    slug: Mapped[str] = mapped_column(String(80), index=True)
+    provider: Mapped[str] = mapped_column(String(50), default="piper")
+    voice_id: Mapped[str | None] = mapped_column(String(120))
+    speed: Mapped[float] = mapped_column(Float, default=1.0)
+    pitch_semitones: Mapped[float] = mapped_column(Float, default=0.0)
+    pause_ms: Mapped[int] = mapped_column(Integer, default=300)
+    is_default: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+
+
 class Audio(Base):
     __tablename__ = "audio"
 
@@ -445,6 +521,22 @@ class Analytics(Base):
     recorded_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
+class PlatformAnalyticsSnapshot(Base):
+    """OAuth platform metrics snapshot — V5.4.1."""
+
+    __tablename__ = "platform_analytics_snapshots"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    project_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("projects.id", ondelete="CASCADE"), index=True)
+    channel_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("channels.id", ondelete="SET NULL"), index=True)
+    platform: Mapped[str] = mapped_column(String(50), index=True)
+    external_media_id: Mapped[str | None] = mapped_column(String(120), index=True)
+    title: Mapped[str | None] = mapped_column(String(500))
+    metrics: Mapped[dict] = mapped_column(JSON)
+    channel_totals: Mapped[dict | None] = mapped_column(JSON)
+    fetched_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
+
+
 class DeadLetterJob(Base):
     __tablename__ = "dead_letter_jobs"
 
@@ -508,6 +600,12 @@ class ProjectMemory(Base):
     preferred_formats: Mapped[list | None] = mapped_column(JSON)
     hook_patterns: Mapped[list | None] = mapped_column(JSON)
     cta_style: Mapped[str | None] = mapped_column(String(255))
+    default_voice_builtin: Mapped[str | None] = mapped_column(String(80))
+    # V5.1.4 Project DNA 2.0
+    cinematic_preset: Mapped[str | None] = mapped_column(String(40))
+    content_angle: Mapped[str | None] = mapped_column(String(40))
+    brand_keywords: Mapped[list | None] = mapped_column(JSON)
+    editing_preferences: Mapped[dict | None] = mapped_column(JSON)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
 
     project: Mapped["Project"] = relationship(back_populates="memory")
@@ -670,6 +768,74 @@ class VideoPlatformVariantRow(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
 
 
+class PerformanceLearningRow(Base):
+    """V5.4.2 — OAuth performance insights (CTR, retention) → learning."""
+
+    __tablename__ = "performance_learning_insights"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    project_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("projects.id", ondelete="CASCADE"), index=True)
+    platform: Mapped[str] = mapped_column(String(50), index=True)
+    external_media_id: Mapped[str | None] = mapped_column(String(120), index=True)
+    pipeline_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("pipelines.id", ondelete="SET NULL"), index=True)
+    title: Mapped[str | None] = mapped_column(String(500))
+    topic: Mapped[str] = mapped_column(String(500), default="")
+    ctr: Mapped[float | None] = mapped_column(Float)
+    engagement_rate: Mapped[float | None] = mapped_column(Float)
+    retention_pct: Mapped[float | None] = mapped_column(Float)
+    retention_delta: Mapped[float | None] = mapped_column(Float)
+    views: Mapped[int] = mapped_column(Integer, default=0)
+    likes: Mapped[int] = mapped_column(Integer, default=0)
+    comments: Mapped[int] = mapped_column(Integer, default=0)
+    performance_tier: Mapped[str] = mapped_column(String(20), default="medium")
+    learnings: Mapped[list | None] = mapped_column(JSON)
+    kb_indexed: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
+
+
+class CommentAnalysisRow(Base):
+    """V5.4.3 — comment sentiment/themes per published media."""
+
+    __tablename__ = "comment_analysis_insights"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    project_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("projects.id", ondelete="CASCADE"), index=True)
+    platform: Mapped[str] = mapped_column(String(50), index=True)
+    external_media_id: Mapped[str | None] = mapped_column(String(120), index=True)
+    title: Mapped[str | None] = mapped_column(String(500))
+    comment_count: Mapped[int] = mapped_column(Integer, default=0)
+    positive_pct: Mapped[float] = mapped_column(Float, default=0.0)
+    negative_pct: Mapped[float] = mapped_column(Float, default=0.0)
+    neutral_pct: Mapped[float] = mapped_column(Float, default=0.0)
+    question_count: Mapped[int] = mapped_column(Integer, default=0)
+    themes: Mapped[list | None] = mapped_column(JSON)
+    sample_comments: Mapped[list | None] = mapped_column(JSON)
+    error: Mapped[str | None] = mapped_column(String(300))
+    kb_indexed: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
+
+
+class CommunityReplyDraftRow(Base):
+    """V5.4.4 — community reply drafts (human approval, no auto-post)."""
+
+    __tablename__ = "community_reply_drafts"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    project_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("projects.id", ondelete="CASCADE"), index=True)
+    platform: Mapped[str] = mapped_column(String(50), index=True)
+    external_media_id: Mapped[str | None] = mapped_column(String(120), index=True)
+    media_title: Mapped[str | None] = mapped_column(String(500))
+    original_comment: Mapped[str] = mapped_column(Text)
+    comment_author: Mapped[str | None] = mapped_column(String(255))
+    draft_reply: Mapped[str] = mapped_column(Text)
+    category: Mapped[str] = mapped_column(String(50), default="general")
+    sentiment: Mapped[str] = mapped_column(String(20), default="neutral")
+    priority: Mapped[int] = mapped_column(Integer, default=0)
+    status: Mapped[str] = mapped_column(String(20), default="draft", index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+
+
 class LearningInsightRow(Base):
     """V4 Learning Engine — post-pipeline insights (Epic 7)."""
 
@@ -750,3 +916,22 @@ class KnowledgeEntry(Base):
     )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+
+
+class PlatformPublicationRow(Base):
+    """Audit log for publisher attempts per platform (phase 6)."""
+
+    __tablename__ = "platform_publications"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    project_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("projects.id", ondelete="CASCADE"), index=True)
+    pipeline_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("pipelines.id", ondelete="SET NULL"), index=True)
+    platform: Mapped[str] = mapped_column(String(50), index=True)
+    publish_mode: Mapped[str] = mapped_column(String(30), default="dry_run", index=True)
+    status: Mapped[str] = mapped_column(String(40), default="ready", index=True)
+    title: Mapped[str | None] = mapped_column(String(500))
+    external_id: Mapped[str | None] = mapped_column(String(200), index=True)
+    publish_url: Mapped[str | None] = mapped_column(String(1000))
+    error: Mapped[str | None] = mapped_column(Text)
+    payload: Mapped[dict | None] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)

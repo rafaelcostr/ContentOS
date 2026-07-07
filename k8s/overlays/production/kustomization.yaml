@@ -13,6 +13,8 @@ components:
 patches:
   - path: patch-configmap.yaml
   - path: patch-resources.yaml
+  - path: patch-resources-v5.yaml
+  - path: patch-gateway-hardening.yaml
   - path: patch-remove-dev-secret.yaml
 
 images:

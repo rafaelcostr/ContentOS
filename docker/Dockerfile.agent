@@ -47,4 +47,4 @@ ENV PLUGINS_ROOT=/app/plugins
 ENV PROMPTS_DIR=/app/packages/prompts/prompts
 ENV PROMPTS_OVERRIDE_DIR=/data/prompts
 
-CMD celery -A contentos_agents.worker worker -l info -Q contentos.trend_intelligence,contentos.research,contentos.hook,contentos.script,contentos.script_review,contentos.emotion,contentos.content_intelligence,contentos.scene,contentos.storyboard,contentos.scene_director,contentos.clip_research,contentos.asset_collector,contentos.asset_index,contentos.takes,contentos.voice,contentos.subtitle,contentos.editor,contentos.quality,contentos.video_review,contentos.publisher,contentos.multi_content,contentos.multi_content_video,contentos.thumbnail,contentos.analytics,contentos.learning
+CMD ["sh", "-c", "celery -A contentos_agents.worker worker -l info -Q $(python -c 'from contentos_agents.worker import ALL_QUEUES; print(ALL_QUEUES)') -c 4"]

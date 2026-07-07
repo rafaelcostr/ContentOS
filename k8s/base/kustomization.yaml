@@ -10,6 +10,7 @@ resources:
   - gateway.yaml
   - workflow-engine.yaml
   - agents-worker-pools.yaml
+  - agents-worker-pools-v5.yaml
   - ai-gateway.yaml
   - dashboard.yaml
 

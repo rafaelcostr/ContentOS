@@ -1,12 +1,31 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { api } from "@/lib/api";
+import { Button } from "@/components/ui/button";
+import { api, Project } from "@/lib/api";
 import { MetricBar, StatCard } from "@/components/dashboard/MetricBar";
+
+const PLATFORM_LABELS: Record<string, string> = {
+  youtube: "YouTube",
+  tiktok: "TikTok",
+  instagram: "Instagram",
+};
 
 export default function AnalyticsPage() {
   const queryClient = useQueryClient();
+  const [projectId, setProjectId] = useState<string | null>(null);
+
+  const { data: projects = [] } = useQuery({
+    queryKey: ["projects"],
+    queryFn: api.getProjects,
+  });
+
+  useEffect(() => {
+    if (projects.length && !projectId) setProjectId(projects[0].id);
+  }, [projects, projectId]);
+
   const { data: overview } = useQuery({ queryKey: ["analytics"], queryFn: api.getAnalytics, refetchInterval: 45_000 });
   const { data: insights } = useQuery({
     queryKey: ["analytics-insights"],
@@ -18,6 +37,29 @@ export default function AnalyticsPage() {
     queryKey: ["provider-analytics"],
     queryFn: api.getProviderAnalytics,
     refetchInterval: 60_000,
+  });
+  const { data: platformCaps } = useQuery({
+    queryKey: ["platform-analytics-caps", projectId],
+    queryFn: () => api.getPlatformAnalyticsCapabilities(projectId!),
+    enabled: !!projectId,
+  });
+  const { data: platformSummary } = useQuery({
+    queryKey: ["platform-analytics-summary", projectId],
+    queryFn: () => api.getPlatformAnalyticsSummary(projectId!),
+    enabled: !!projectId,
+    refetchInterval: 120_000,
+  });
+  const { data: platformSnapshots } = useQuery({
+    queryKey: ["platform-analytics-snapshots", projectId],
+    queryFn: () => api.getPlatformAnalyticsSnapshots(projectId!, undefined, 20),
+    enabled: !!projectId,
+  });
+  const syncPlatformMutation = useMutation({
+    mutationFn: () => api.syncPlatformAnalytics({ project_id: projectId!, persist: true }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["platform-analytics-summary", projectId] });
+      queryClient.invalidateQueries({ queryKey: ["platform-analytics-snapshots", projectId] });
+    },
   });
   const { data: system } = useQuery({
     queryKey: ["metrics-system"],
@@ -45,8 +87,88 @@ export default function AnalyticsPage() {
     <div className="p-8">
       <header className="mb-8">
         <h1 className="text-2xl font-bold tracking-tight">Análises</h1>
-        <p className="text-sm text-muted-foreground">Performance, providers e uso de recursos</p>
+        <p className="text-sm text-muted-foreground">Performance, providers, OAuth platforms e uso de recursos</p>
       </header>
+
+      <div className="mb-8 flex flex-wrap items-end gap-3">
+        <div>
+          <label className="text-xs text-muted-foreground">Projeto (OAuth Analytics)</label>
+          <select
+            className="mt-1 block rounded-md border border-border bg-background px-3 py-2 text-sm"
+            value={projectId ?? ""}
+            onChange={(e) => setProjectId(e.target.value)}
+          >
+            {projects.map((p: Project) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+          </select>
+        </div>
+        <Button
+          onClick={() => syncPlatformMutation.mutate()}
+          disabled={!projectId || syncPlatformMutation.isPending}
+        >
+          {syncPlatformMutation.isPending ? "Sincronizando…" : "Sync OAuth (YT/TikTok/IG)"}
+        </Button>
+      </div>
+
+      <Card className="mb-8">
+        <CardHeader>
+          <CardTitle>OAuth Analytics — plataformas (V5.4.1)</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {!platformCaps?.length ? (
+            <p className="text-sm text-muted-foreground">Selecione um projeto com canais OAuth em /plugins.</p>
+          ) : (
+            <div className="space-y-6">
+              <div className="grid gap-4 sm:grid-cols-3">
+                {platformCaps.map((cap) => (
+                  <div key={cap.platform} className="rounded-md border border-border p-4">
+                    <p className="font-medium">{PLATFORM_LABELS[cap.platform] ?? cap.platform}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {cap.connected_channels} canal(is) · OAuth {cap.oauth_available ? "ok" : "não configurado"}
+                    </p>
+                    {cap.connected_channels === 0 && cap.oauth_available && (
+                      <p className="mt-1 text-xs text-amber-600">Reconecte em /plugins para scopes de analytics</p>
+                    )}
+                  </div>
+                ))}
+              </div>
+              {platformSummary && platformSummary.snapshot_count > 0 && (
+                <div className="grid gap-4 sm:grid-cols-3">
+                  {platformSummary.platforms.map((p) => (
+                    <div key={p.platform} className="rounded-md border border-border p-3 text-sm">
+                      <p className="font-medium capitalize">{p.platform}</p>
+                      <p className="text-muted-foreground">{p.media_count} mídias rastreadas</p>
+                      <p>{p.total_views.toLocaleString()} views · {p.total_likes.toLocaleString()} likes</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {syncPlatformMutation.data?.reports?.some((r) => r.needs_reconnect) && (
+                <p className="text-sm text-amber-600">
+                  Alguns canais precisam reconectar OAuth com scopes de analytics (veja /plugins).
+                </p>
+              )}
+              {platformSnapshots && platformSnapshots.length > 0 && (
+                <div className="space-y-2">
+                  <h3 className="text-sm font-semibold">Últimas métricas</h3>
+                  {platformSnapshots.slice(0, 8).map((snap) => (
+                    <div key={snap.id} className="rounded border border-border/60 px-3 py-2 text-sm">
+                      <span className="font-medium capitalize">{snap.platform}</span>
+                      <span className="text-muted-foreground"> — {snap.title?.slice(0, 50) ?? snap.external_media_id}</span>
+                      <span className="ml-2 text-xs">
+                        {snap.metrics.views} views · {snap.metrics.likes} likes
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       <div className="mb-8 grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
         {metrics.map((m) => (

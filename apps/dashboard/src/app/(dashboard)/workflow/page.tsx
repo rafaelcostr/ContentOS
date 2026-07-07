@@ -74,7 +74,7 @@ export default function WorkflowPage() {
       <section className="rounded-lg border border-border bg-card p-6">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <h2 className="font-semibold">
-            Pipeline {variant === "v2" ? "V2 Dynamic (14 steps)" : "V1 Default (9 steps)"}
+            Pipeline {variant === "v2" ? "V2 Dynamic (15 steps)" : "V1 Default (9 steps)"}
           </h2>
           <div className="flex gap-2">
             {(["v2", "v1"] as const).map((v) => (

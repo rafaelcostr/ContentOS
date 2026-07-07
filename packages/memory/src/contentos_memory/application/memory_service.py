@@ -42,6 +42,8 @@ class MemoryService:
             "narrator_persona": memory.narrator_persona,
             "pace": memory.pace,
             "cta_style": memory.cta_style,
+            "content_angle": memory.content_angle,
+            "cinematic_preset": memory.cinematic_preset,
         }
 
     async def update_dna(

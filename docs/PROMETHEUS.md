@@ -19,6 +19,8 @@ curl http://localhost:8000/metrics
 
 Grafana ships with Prometheus + Jaeger datasources and pre-built dashboards in folder **ContentOS** — see [GRAFANA.md](./GRAFANA.md).
 
+Alert rules (V5.5.3): `docker/prometheus/alerts/contentos.yml` — see [SLO_ALERTS_RUNBOOKS.md](./SLO_ALERTS_RUNBOOKS.md).
+
 ## Environment
 
 ```env

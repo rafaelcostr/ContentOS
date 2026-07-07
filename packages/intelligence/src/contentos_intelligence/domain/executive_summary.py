@@ -46,6 +46,18 @@ class ExecutiveSummary:
     hook_patterns: list[str] = field(default_factory=list)
     latest_learning_topic: str | None = None
     modules: list[ModuleStatus] = field(default_factory=list)
+    # V5.5.1 Command Center
+    factory_batches_total: int = 0
+    factory_batches_running: int = 0
+    factory_pending_approval: int = 0
+    platform_snapshots: int = 0
+    performance_insights: int = 0
+    comment_insights: int = 0
+    community_drafts_pending: int = 0
+    oauth_channels_connected: int = 0
+    alerts: list[str] = field(default_factory=list)
+    slo_items: list[dict] = field(default_factory=list)
+    v5_modules: list[ModuleStatus] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -67,4 +79,15 @@ class ExecutiveSummary:
             "hook_patterns": list(self.hook_patterns),
             "latest_learning_topic": self.latest_learning_topic,
             "modules": [m.to_dict() for m in self.modules],
+            "factory_batches_total": self.factory_batches_total,
+            "factory_batches_running": self.factory_batches_running,
+            "factory_pending_approval": self.factory_pending_approval,
+            "platform_snapshots": self.platform_snapshots,
+            "performance_insights": self.performance_insights,
+            "comment_insights": self.comment_insights,
+            "community_drafts_pending": self.community_drafts_pending,
+            "oauth_channels_connected": self.oauth_channels_connected,
+            "alerts": list(self.alerts),
+            "slo_items": list(self.slo_items),
+            "v5_modules": [m.to_dict() for m in self.v5_modules],
         }

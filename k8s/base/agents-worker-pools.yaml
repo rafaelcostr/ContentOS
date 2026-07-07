@@ -173,7 +173,7 @@ spec:
             - -l
             - info
             - -Q
-            - contentos.scene,contentos.takes,contentos.voice,contentos.subtitle,contentos.quality,contentos.video_review,contentos.publisher,contentos.thumbnail,contentos.analytics
+            - contentos.scene,contentos.takes,contentos.voice,contentos.subtitle,contentos.knowledge_base,contentos.publisher,contentos.thumbnail,contentos.analytics,contentos.learning,contentos.content_intelligence,contentos.multi_content,contentos.multi_content_video
             - -c
             - "2"
           envFrom:

@@ -141,6 +141,8 @@ services:
       - "8001:8001"
     env_file:
       - ../.env
+    environment:
+      - QUOTAS_ENFORCE=false
     depends_on:
       postgres:
         condition: service_healthy
@@ -161,6 +163,8 @@ services:
       - PROMPTS_OVERRIDE_DIR=/data/prompts
       - USE_AI_CACHE=${USE_AI_CACHE:-true}
       - CACHE_REDIS_URL=redis://redis:6379/2
+      - QUOTAS_ENFORCE=false
+      - BILLING_ENFORCE_CREDITS=false
     volumes:
       - prompts_data:/data/prompts
     depends_on:

@@ -78,3 +78,28 @@ def test_subtitle_sync_skipped_passes_subtitles_dim():
         duration=30.0,
     )
     assert report.dimensions["subtitles"] == 10
+
+
+def test_quality_scoring_adds_real_media_dimensions():
+    report = build_quality_report(
+        has_render=True,
+        render_exists=True,
+        render_size_ok=True,
+        has_audio_ref=True,
+        has_audio_stream=True,
+        has_subtitles=True,
+        subtitle_sync_skipped=False,
+        width=1080,
+        height=1920,
+        codec="h264",
+        fps=60.0,
+        duration=30.0,
+        has_real_clips=False,
+        missing_clip_count=2,
+        has_narration_audio=False,
+        extra_errors=["Render contains placeholder scenes", "Render used generated/silent narration audio"],
+    )
+    assert report.passed is False
+    assert report.dimensions["real_clips"] == 0
+    assert report.dimensions["narration"] == 0
+    assert "Substituir cenas placeholder por clipes reais" in report.suggestions

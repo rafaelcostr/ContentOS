@@ -6,8 +6,12 @@ from contentos_events.application.publisher import EventBusPublisher
 from contentos_events.domain.event import DomainEvent
 from contentos_events.domain.event_types import (
     ASSET_INDEX_FINISHED,
+    ASSET_SEARCH_FINISHED,
     ASSETS_READY,
+    AUTO_RETRY_FINISHED,
     CLIP_RESEARCH_FINISHED,
+    KNOWLEDGE_BASE_INDEXED,
+    MEDIA_ANALYZE_FINISHED,
     QUALITY_REJECTED,
     RESEARCH_FINISHED,
     SCRIPT_FINISHED,
@@ -113,6 +117,8 @@ def test_v2_steps_map_to_domain_events():
         "clip_research": CLIP_RESEARCH_FINISHED,
         "asset_collector": ASSETS_READY,
         "asset_index": ASSET_INDEX_FINISHED,
+        "media_analyze": MEDIA_ANALYZE_FINISHED,
+        "asset_search": ASSET_SEARCH_FINISHED,
         "takes": TAKES_FINISHED,
     }
     for step, event_type in expected.items():
@@ -133,6 +139,9 @@ def test_v2_dynamic_steps_all_have_domain_events():
 
 def test_pascal_aliases_resolve_to_wire_format():
     assert resolve_event_type("AssetsReady") == ASSETS_READY
+    assert resolve_event_type("AutoRetryFinished") == AUTO_RETRY_FINISHED
+    assert resolve_event_type("KnowledgeBaseIndexed") == KNOWLEDGE_BASE_INDEXED
+    assert resolve_event_type("AssetSearchFinished") == ASSET_SEARCH_FINISHED
     assert resolve_event_type("ResearchFinished") == RESEARCH_FINISHED
     assert resolve_event_type("RenderReady") == "editor.finished"
     assert resolve_event_type(ASSETS_READY) == ASSETS_READY
@@ -140,6 +149,8 @@ def test_pascal_aliases_resolve_to_wire_format():
 
 def test_pascal_alias_display():
     assert pascal_alias(ASSETS_READY) == "AssetsReady"
+    assert pascal_alias(AUTO_RETRY_FINISHED) == "AutoRetryFinished"
+    assert pascal_alias(KNOWLEDGE_BASE_INDEXED) == "KnowledgeBaseIndexed"
     assert pascal_alias(CLIP_RESEARCH_FINISHED) == "ClipResearchFinished"
     assert pascal_alias(TAKES_FINISHED) == "TakesFinished"
 

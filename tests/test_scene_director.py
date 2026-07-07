@@ -86,8 +86,10 @@ def test_scene_video_filter_uses_director_segment():
         fade_in=0.2,
         fade_out=0.3,
         crop_bias="top",
+        playback_speed=1.1,
     )
     vf = scene_video_filter(spec, duration=5.0, segment=segment)
     assert "zoompan" not in vf
     assert "fade=t=in:st=0:d=0.2" in vf
     assert "(ih-1920)/4" in vf
+    assert "setpts=PTS/1.1000" in vf

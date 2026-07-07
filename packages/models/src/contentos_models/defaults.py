@@ -9,8 +9,10 @@ DEFAULT_AGENT_MODELS: dict[str, dict[str, str]] = {
     "script": {"provider_type": "text", "provider": "ollama", "model_env": "OLLAMA_MODEL", "default_model": "qwen2.5:7b"},
     "script_review": {"provider_type": "text", "provider": "ollama", "model_env": "OLLAMA_MODEL", "default_model": "qwen2.5:7b"},
     "emotion": {"provider_type": "text", "provider": "ollama", "model_env": "OLLAMA_MODEL", "default_model": "qwen2.5:7b"},
+    "content_score": {"provider_type": "compute", "provider": "rules", "model_env": "", "default_model": "score-aggregator"},
     "content_intelligence": {"provider_type": "compute", "provider": "rules", "model_env": "", "default_model": "viral+reuse"},
     "video_review": {"provider_type": "text", "provider": "ollama", "model_env": "OLLAMA_MODEL", "default_model": "qwen2.5:7b"},
+    "auto_retry": {"provider_type": "compute", "provider": "rules", "model_env": "", "default_model": "creative-retry-policy"},
     "storyboard": {"provider_type": "text", "provider": "ollama", "model_env": "OLLAMA_MODEL", "default_model": "qwen2.5:7b"},
     "scene_director": {"provider_type": "compute", "provider": "rules", "model_env": "", "default_model": "storyboard-mapper"},
     "scene": {"provider_type": "text", "provider": "ollama", "model_env": "OLLAMA_MODEL", "default_model": "qwen2.5:7b"},
@@ -18,6 +20,7 @@ DEFAULT_AGENT_MODELS: dict[str, dict[str, str]] = {
     "analytics": {"provider_type": "text", "provider": "ollama", "model_env": "OLLAMA_MODEL", "default_model": "qwen2.5:7b"},
     "thumbnail": {"provider_type": "text", "provider": "ollama", "model_env": "OLLAMA_MODEL", "default_model": "qwen2.5:7b"},
     "clip_research": {"provider_type": "text", "provider": "ollama", "model_env": "OLLAMA_MODEL", "default_model": "qwen2.5:7b"},
+    "knowledge_base": {"provider_type": "compute", "provider": "postgres", "model_env": "", "default_model": "kb-indexer"},
     "voice": {"provider_type": "speech", "provider": "piper", "model_env": "PIPER_VOICE", "default_model": "pt_BR-faber-medium"},
     "subtitle": {"provider_type": "subtitle", "provider": "local", "model_env": "WHISPER_MODEL", "default_model": "large-v3"},
     "editor": {"provider_type": "compute", "provider": "ffmpeg", "model_env": "", "default_model": "libx264 1080x1920@60"},
@@ -29,7 +32,7 @@ PROVIDER_CATALOG: dict[str, list[str]] = {
     "text": ["ollama", "openai", "claude", "gemini", "deepseek", "mistral", "qwen", "llama"],
     "speech": ["piper", "elevenlabs"],
     "subtitle": ["local", "whisper", "openai"],
-    "compute": ["ffmpeg", "minio", "ffprobe"],
+    "compute": ["ffmpeg", "minio", "ffprobe", "rules", "postgres"],
 }
 
 EDITABLE_AGENTS = {

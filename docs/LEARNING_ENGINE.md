@@ -17,7 +17,10 @@ Sem métricas externas de plataforma (views TikTok, etc.), o learning é **inter
 
 ## Disparo
 
-Agente **async** `learning` — enfileirado automaticamente ao completar pipelines V4 com `enable_learning: true` (templates `v4-intelligence`, `v4-multi-text`, `v4-multi-full`).
+Agente `learning`:
+
+- Nos templates V4 existentes, roda como agente assíncrono ao completar pipelines com `enable_learning: true` (`v4-intelligence`, `v4-multi-text`, `v4-multi-full`).
+- No template `factory-full`, roda como etapa executável da linha de montagem antes de `analytics` e `publisher`.
 
 ```
 pipeline.completed → dispatch_async_agent("learning")

@@ -235,6 +235,11 @@ class BaseAgentHandler(ABC):
                 specialist_block = str(payload["specialist_context"])
                 if specialist_block not in base_memory:
                     vars_map["memory_context"] = f"{base_memory}\n\n{specialist_block}".strip()
+            creative_block = str(payload.get("creative_memory_context") or "").strip()
+            if creative_block:
+                base_memory = vars_map.get("memory_context", "")
+                if creative_block not in base_memory:
+                    vars_map["memory_context"] = f"{base_memory}\n\n[Creative Memory]\n{creative_block}".strip()
 
         return service.render(prompt_id, vars_map)
 

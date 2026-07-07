@@ -6,8 +6,10 @@ from pathlib import Path
 from uuid import uuid4
 
 from contentos_shared.agents.base import BaseAgentHandler
+from contentos_shared.cinematic import CinematicSettings, apply_directive_to_segment
 from contentos_shared.director_plan import directive_for_index
 from contentos_shared.enums import AssetCategory, JobStatus
+from contentos_shared.media_production import render_allow_placeholder
 from contentos_shared.providers.ffmpeg_filters import RenderSpec, SceneSegment
 from contentos_shared.providers.ffmpeg_provider import FFmpegProvider
 from contentos_shared.schemas.agent import AgentTaskInput, AgentTaskOutput
@@ -30,6 +32,7 @@ class EditorAgentHandler(BaseAgentHandler):
 
         audio_data = task_input.payload.get("audio_ref", {})
         subtitle_data = task_input.payload.get("subtitle_ref", {})
+        used_silent_audio = not bool(audio_data.get("key"))
 
         with tempfile.TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)
@@ -63,13 +66,44 @@ class EditorAgentHandler(BaseAgentHandler):
                 logs.append("Subtitles loaded")
 
             director_plan = task_input.payload.get("director_plan")
+            cinematic = CinematicSettings.from_payload(task_input.payload)
             default_fade = float(
-                (director_plan or {}).get("default_fade") or os.getenv("EDITOR_FADE_DURATION", "0.4")
+                cinematic.fade_duration
+                or (director_plan or {}).get("default_fade")
+                or os.getenv("EDITOR_FADE_DURATION", "0.4")
             )
 
             scene_segments = await self._build_scene_segments(
-                tmp_path, scenes, clips, total_duration, am, logs, director_plan
+                tmp_path,
+                scenes,
+                clips,
+                total_duration,
+                am,
+                logs,
+                director_plan,
+                cinematic,
             )
+            placeholder_scene_labels = [segment.label for segment in scene_segments if segment.clip_path is None]
+            real_clip_count = len(scene_segments) - len(placeholder_scene_labels)
+            if placeholder_scene_labels:
+                logs.append("Placeholder scenes: " + ", ".join(placeholder_scene_labels))
+            if placeholder_scene_labels and not render_allow_placeholder():
+                return AgentTaskOutput(
+                    job_id=task_input.job_id,
+                    status=JobStatus.FAILED.value,
+                    error=(
+                        "placeholder render blocked in production: "
+                        + ", ".join(placeholder_scene_labels)
+                    ),
+                    data={
+                        "render_diagnostics": {
+                            "placeholder_scene_labels": placeholder_scene_labels,
+                            "real_clip_count": real_clip_count,
+                            "scene_count": len(scene_segments),
+                        }
+                    },
+                    logs=logs,
+                )
 
             music_path = await self._resolve_music(tmp_path, am, logs)
 
@@ -82,6 +116,12 @@ class EditorAgentHandler(BaseAgentHandler):
                 enable_zoom=os.getenv("EDITOR_ENABLE_ZOOM", "true").lower() == "true",
                 fade_duration=default_fade,
                 music_volume=float(os.getenv("EDITOR_MUSIC_VOLUME", "0.12")),
+            )
+            cinematic.apply_to_render_spec(spec)
+            logs.append(
+                f"Cinematic preset={cinematic.preset} "
+                f"zoom={cinematic.enable_zoom} ducking={cinematic.enable_ducking} "
+                f"speed_ramp={cinematic.enable_speed_ramp}"
             )
 
             output_path = tmp_path / "render.mp4"
@@ -124,6 +164,15 @@ class EditorAgentHandler(BaseAgentHandler):
                 "fps": 60,
                 "duration_seconds": duration,
                 "scene_count": len(scene_segments),
+                "render_diagnostics": {
+                    "used_silent_audio": used_silent_audio,
+                    "subtitles_embedded": bool(srt_path),
+                    "placeholder_scene_labels": placeholder_scene_labels,
+                    "missing_clip_count": len(placeholder_scene_labels),
+                    "real_clip_count": real_clip_count,
+                    "scene_count": len(scene_segments),
+                    "has_custom_music": bool(music_path),
+                },
                 "segments": task_input.payload.get("segments", []),
                 "audio_ref": audio_data if audio_data.get("key") else task_input.payload.get("audio_ref", {}),
                 "subtitle_ref": subtitle_data if subtitle_data.get("key") else task_input.payload.get("subtitle_ref", {}),
@@ -140,6 +189,7 @@ class EditorAgentHandler(BaseAgentHandler):
         am,
         logs: list[str],
         director_plan: dict | None = None,
+        cinematic: CinematicSettings | None = None,
     ) -> list[SceneSegment]:
         if not scenes:
             return [SceneSegment(index=0, duration=total_duration, label="main")]
@@ -180,20 +230,10 @@ class EditorAgentHandler(BaseAgentHandler):
                 label=scene.get("label", f"scene_{i}"),
             )
             if directive:
-                if "zoom_enabled" in directive:
-                    segment.zoom_enabled = bool(directive["zoom_enabled"])
-                if directive.get("zoom_max") is not None:
-                    segment.zoom_max = float(directive["zoom_max"])
-                if directive.get("zoom_rate") is not None:
-                    segment.zoom_rate = float(directive["zoom_rate"])
-                if directive.get("pan_x_expr"):
-                    segment.pan_x_expr = str(directive["pan_x_expr"])
-                if directive.get("fade_in") is not None:
-                    segment.fade_in = float(directive["fade_in"])
-                if directive.get("fade_out") is not None:
-                    segment.fade_out = float(directive["fade_out"])
-                if directive.get("crop_bias"):
-                    segment.crop_bias = str(directive["crop_bias"])
+                apply_directive_to_segment(segment, directive)
+                if cinematic and not cinematic.enable_speed_ramp:
+                    segment.playback_speed = 1.0
+                    segment.speed_ramp_end = None
 
             segments.append(segment)
 

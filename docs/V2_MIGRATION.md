@@ -68,7 +68,7 @@ Dois templates built-in são inseridos automaticamente na tabela `workflows` no 
 |------|-------|----------|
 | `v1-default` | 9 steps V1 | Controlado só por env |
 | `v2-full` | 9 steps V1 | Clip + thumbnail + analytics via `config` (async) |
-| `v2-dynamic` | 14 steps V2 | Pipeline completo síncrono |
+| `v2-dynamic` | 16 steps V2 | Pipeline completo síncrono com media_analyze |
 
 ### API
 
@@ -190,3 +190,4 @@ Pipeline E2E:
 ```powershell
 python scripts/e2e_pipeline.py
 ```
+

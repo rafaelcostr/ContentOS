@@ -57,6 +57,15 @@ class InstagramReelsPlugin(PublishPlugin):
             prepared.status = "failed"
             prepared.error = "Missing Instagram access_token or instagram_user_id"
             return prepared
+        video_url = (
+            credentials.get("video_url")
+            or prepared.payload.get("video_url")
+            or context.render_public_url
+        )
+        if not video_url:
+            prepared.status = "failed"
+            prepared.error = "Missing public video_url for Instagram Reels publish"
+            return prepared
 
         try:
             async with httpx.AsyncClient(timeout=120.0) as client:
@@ -66,7 +75,7 @@ class InstagramReelsPlugin(PublishPlugin):
                         "access_token": access_token,
                         "media_type": "REELS",
                         "caption": prepared.description,
-                        "video_url": credentials.get("video_url", ""),
+                        "video_url": video_url,
                     },
                 )
                 if container.status_code >= 400:

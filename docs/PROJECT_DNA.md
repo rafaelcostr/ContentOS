@@ -14,6 +14,16 @@ Identidade criativa por projeto, estendendo `ProjectMemory` sem tabela paralela.
 | `hook_patterns` | list | Padrões de abertura favoritos |
 | `cta_style` | string | urgente, suave, pergunta, … |
 
+### Campos DNA 2.0 (V5.1.4)
+
+| Campo | Tipo | Descrição |
+|-------|------|-----------|
+| `cinematic_preset` | `default` \| `dynamic` \| `calm` \| `punchy` | Preset do editor cinematográfico |
+| `content_angle` | `hype` \| `documentary` \| `tutorial` \| … | Ângulo criativo → scene_director |
+| `brand_keywords` | list | Palavras-chave para busca de assets e roteiro |
+| `editing_preferences` | json | Overrides opcionais (zoom, ducking, music_volume) |
+| `default_voice_builtin` | string | Voz built-in padrão do projeto (V5.1.2) |
+
 Campos V3 (`tone`, `vocabulary`, `niche`, …) permanecem na mesma linha `project_memory`.
 
 ## API
@@ -49,13 +59,31 @@ PATCH /api/v1/projects/{id}/dna
   "preferred_formats": ["tiktok", "youtube_shorts"],
   "visual_style": {"primary_color": "#FF0050", "mood": "neon"},
   "hook_patterns": ["pergunta chocante", "número nos 3s"],
-  "cta_style": "urgente"
+  "cta_style": "urgente",
+  "cinematic_preset": "dynamic",
+  "content_angle": "hype",
+  "brand_keywords": ["GTA", "open world"],
+  "editing_preferences": {"music_volume": 0.14}
 }
 ```
 
+## Injeção automática no pipeline (V5.1.4)
+
+O Workflow Engine injeta no payload (quando não definido explicitamente):
+
+| Chave | Steps afetados |
+|-------|----------------|
+| `cinematic` | `editor` |
+| `content_angle` / `project_dna` | `scene_director` |
+| `brand_keywords` | `asset_search`, roteiro |
+| `voice_profile_name` | `voice` (V5.1.2) |
+
+Módulo: `contentos_shared/dna/pipeline_hints.py`
+
 ## Migration
 
-`010_v4_project_dna` — colunas aditivas em `project_memory`.
+`010_v4_project_dna` — colunas V4.  
+`021_v5_dna_v2` — colunas DNA 2.0 (`cinematic_preset`, `content_angle`, `brand_keywords`, `editing_preferences`).
 
 ```bash
 cd packages/database && alembic upgrade head

@@ -161,6 +161,26 @@ O Master Prompt V4 propõe 12 epics (Viral Intelligence, Knowledge Base, Multi C
 
 ---
 
+## ADR-009 — Aquisição de mídia licenciada (V5.0)
+
+### Contexto
+O clip pipeline V2 (`clip_research` → `asset_collector`) só buscava biblioteca local e assets do projeto. Para autonomia real (“tema → vídeo com B-roll”), é necessário download de vídeos de fontes externas **com licença clara**.
+
+### Decisão
+1. **Estender** `packages/content-sources/` — não criar pacote paralelo.
+2. Adapters oficiais **Pexels** e **Pixabay** com `license_type` em metadata.
+3. `DownloadPipeline` centraliza HTTP fetch, limite de tamanho (`MEDIA_MAX_DOWNLOAD_MB`) e validação de licença (`MEDIA_ALLOWED_LICENSES`).
+4. **Proibido** scrape TikTok/redes sociais ou serviços de remoção de marca d’água.
+5. `asset_collector` coleta top-N candidatos por cena (`MEDIA_COLLECT_TOP_N`) para enriquecer biblioteca.
+6. Dedup global via SHA-256 existente no `AssetPipelineService`.
+
+### Consequências
+- Pipeline autônomo com B-roll royalty-free.
+- Dependência de API keys Pexels/Pixabay (free tier).
+- Media Intelligence (V5.0.3) indexará assets já adquiridos por este pipeline.
+
+---
+
 ## Como adicionar um ADR
 
 1. Incrementar ID.

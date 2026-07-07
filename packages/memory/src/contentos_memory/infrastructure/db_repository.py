@@ -30,6 +30,11 @@ def _row_to_data(row) -> ProjectMemoryData:
         preferred_formats=list(row.preferred_formats or []),
         hook_patterns=list(row.hook_patterns or []),
         cta_style=row.cta_style or "",
+        default_voice_builtin=getattr(row, "default_voice_builtin", None) or "",
+        cinematic_preset=getattr(row, "cinematic_preset", None) or "",
+        content_angle=getattr(row, "content_angle", None) or "",
+        brand_keywords=list(getattr(row, "brand_keywords", None) or []),
+        editing_preferences=dict(getattr(row, "editing_preferences", None) or {}),
     )
 
 
@@ -50,6 +55,11 @@ def _apply_data_to_row(row, data: ProjectMemoryData, *, now: datetime) -> None:
     row.preferred_formats = data.preferred_formats or None
     row.hook_patterns = data.hook_patterns or None
     row.cta_style = data.cta_style or None
+    row.default_voice_builtin = data.default_voice_builtin or None
+    row.cinematic_preset = data.cinematic_preset or None
+    row.content_angle = data.content_angle or None
+    row.brand_keywords = data.brand_keywords or None
+    row.editing_preferences = data.editing_preferences or None
     row.updated_at = now
 
 
@@ -74,6 +84,11 @@ def _new_row(data: ProjectMemoryData, *, now: datetime):
         preferred_formats=data.preferred_formats or None,
         hook_patterns=data.hook_patterns or None,
         cta_style=data.cta_style or None,
+        default_voice_builtin=data.default_voice_builtin or None,
+        cinematic_preset=data.cinematic_preset or None,
+        content_angle=data.content_angle or None,
+        brand_keywords=data.brand_keywords or None,
+        editing_preferences=data.editing_preferences or None,
         updated_at=now,
     )
 

@@ -48,15 +48,64 @@ def test_list_builtin_names():
         "v4-intelligence",
         "v4-multi-text",
         "v4-multi-full",
+        "factory-full",
+        "v5-media-autopilot",
     }
 
 
-def test_v2_dynamic_has_fourteen_steps():
+def test_v2_dynamic_has_asset_search_step():
     tpl = get_builtin("v2-dynamic")
     assert tpl is not None
-    assert len(tpl["steps"]) == 14
+    assert len(tpl["steps"]) == 16
     assert tpl["steps"][3] == "clip_research"
+    assert "asset_search" in tpl["steps"]
     assert tpl["steps"][-1] == "analytics"
+
+
+def test_factory_full_has_executable_assembly_line():
+    tpl = get_builtin("factory-full")
+    assert tpl is not None
+    assert len(tpl["steps"]) == 31
+    assert tpl["steps"][:5] == ["research", "trend_intelligence", "hook", "script", "script_review"]
+    assert tpl["steps"][-10:] == [
+        "auto_retry",
+        "content_score",
+        "ai_director",
+        "content_intelligence",
+        "learning",
+        "knowledge_base",
+        "creative_memory",
+        "analytics",
+        "seo",
+        "publisher",
+    ]
+    assert tpl["steps"].index("asset_search") + 1 == tpl["steps"].index("takes")
+    assert tpl["steps"].index("video_review") + 1 == tpl["steps"].index("auto_retry")
+    assert tpl["steps"].index("auto_retry") + 1 == tpl["steps"].index("content_score")
+    assert tpl["config"]["enable_auto_retry"] is True
+    assert tpl["config"]["enable_content_score"] is True
+    assert tpl["config"]["enable_learning"] is True
+    assert tpl["config"]["enable_knowledge_base"] is True
+    assert tpl["config"]["enable_clip_pipeline"] is True
+
+
+def test_v5_media_autopilot_is_lean_media_pipeline():
+    tpl = get_builtin("v5-media-autopilot")
+    assert tpl is not None
+    assert len(tpl["steps"]) == 18
+    assert tpl["steps"] == [s.value for s in PipelineStep.v5_media_autopilot_ordered()]
+    assert tpl["steps"][3] == "clip_research"
+    assert tpl["steps"].index("media_analyze") == tpl["steps"].index("asset_index") + 1
+    assert tpl["steps"].index("asset_search") + 1 == tpl["steps"].index("takes")
+    assert tpl["steps"][-1] == "publisher"
+    assert "thumbnail" not in tpl["steps"]
+    assert "analytics" not in tpl["steps"]
+    cfg = tpl["config"]
+    assert cfg["enable_clip_pipeline"] is True
+    assert cfg["enable_media_analyze"] is True
+    assert cfg["enable_take_recommendation"] is True
+    assert cfg["enable_v5_media_autopilot"] is True
+    assert "pexels" in cfg["content_sources"]
 
 
 def test_default_workflow_from_env(monkeypatch):
@@ -96,9 +145,9 @@ async def test_ensure_workflow_templates_idempotent():
 
     db = FakeSession()
     created = await ensure_workflow_templates(db)
-    assert created == 7
-    assert len(db.added) == 7
+    assert created == 9
+    assert len(db.added) == 9
 
     created_again = await ensure_workflow_templates(db)
     assert created_again == 0
-    assert len(db.added) == 7
+    assert len(db.added) == 9

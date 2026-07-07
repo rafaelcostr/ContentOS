@@ -5,7 +5,12 @@ from __future__ import annotations
 from uuid import uuid4
 
 import pytest
-from contentos_events.domain.event_types import ALL_TYPES, CONTENT_SCORE_COMPUTED, resolve_event_type
+from contentos_events.domain.event_types import (
+    ALL_TYPES,
+    CONTENT_SCORE_COMPUTED,
+    STEP_TO_DOMAIN_EVENT,
+    resolve_event_type,
+)
 from contentos_intelligence.application.content_intelligence_service import ContentIntelligenceService
 from contentos_intelligence.application.content_score.dimensions import (
     DEFAULT_WEIGHTS,
@@ -122,4 +127,5 @@ async def test_content_intelligence_includes_content_score_report():
 
 def test_content_score_computed_event_registered():
     assert CONTENT_SCORE_COMPUTED in ALL_TYPES
+    assert STEP_TO_DOMAIN_EVENT["content_score"] == CONTENT_SCORE_COMPUTED
     assert resolve_event_type("ContentScoreComputed") == CONTENT_SCORE_COMPUTED

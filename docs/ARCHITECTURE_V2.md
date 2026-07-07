@@ -29,7 +29,7 @@
 research → script → scene → takes → voice → subtitle → editor → quality → publisher
 ```
 
-Configurável via **WorkflowDefinition** e env `DEFAULT_WORKFLOW`. Templates built-in: `v1-default`, `v2-full`, `v2-dynamic` (14 steps).
+Configurável via **WorkflowDefinition** e env `DEFAULT_WORKFLOW`. Templates built-in: `v1-default`, `v2-full`, `v2-dynamic` (16 steps).
 
 ### 1.3 Gaps identificados (motivação V2)
 
@@ -221,7 +221,7 @@ sequenceDiagram
     G->>W: create_pipeline
     W->>EB: PipelineCreated
 
-    loop Cada step (14 steps)
+    loop Cada step (16 steps)
         W->>Q: enqueue(step)
         Q->>R: execute (exemplo step 1)
         Note over R: Chama AI Gateway<br/>Prompt Manager<br/>Cache Manager
@@ -1038,7 +1038,7 @@ packages/database/alembic/versions/003_v2_schema.py
 |---------|-----------|
 | `apps/dashboard/src/components/layout/Sidebar.tsx` | +11 menu items |
 | `apps/dashboard/src/lib/api.ts` | +API bindings V2 |
-| `apps/dashboard/src/app/(dashboard)/jobs/page.tsx` | +14 steps visual |
+| `apps/dashboard/src/app/(dashboard)/jobs/page.tsx` | +16 steps visual |
 | `apps/dashboard/src/app/(dashboard)/pipeline/page.tsx` | Pipeline V2 |
 | `apps/dashboard/src/app/(dashboard)/plugins/page.tsx` | Marketplace UI |
 | `apps/dashboard/src/app/(dashboard)/agents/page.tsx` | Novos agentes |
@@ -1243,3 +1243,4 @@ sequenceDiagram
 **V2 concluída** — ver [PHASES.md](./PHASES.md) Fase 7 e [V2_MIGRATION.md](./V2_MIGRATION.md).
 
 Guias práticos para extensões: [guides/ADD_PROVIDER.md](./guides/ADD_PROVIDER.md), [guides/ADD_CONTENT_SOURCE.md](./guides/ADD_CONTENT_SOURCE.md), [guides/ADD_PLUGIN.md](./guides/ADD_PLUGIN.md), [guides/ADD_AGENT.md](./guides/ADD_AGENT.md).
+

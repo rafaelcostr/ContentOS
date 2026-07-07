@@ -7,6 +7,7 @@ import time
 
 import httpx
 
+AI_GATEWAY = os.getenv("AI_GATEWAY_URL", "http://localhost:8020")
 GATEWAY = os.getenv("GATEWAY_URL", "http://localhost:8000")
 OLLAMA = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
 PIPER = os.getenv("PIPER_URL", "http://localhost:5000")
@@ -56,11 +57,9 @@ async def check_whisper(client: httpx.AsyncClient) -> bool:
     return r.json().get("loaded", False)
 
 
-async def check_providers_api(client: httpx.AsyncClient) -> bool:
-    r = await client.get(f"{GATEWAY}/api/v1/providers/health")
-    if r.status_code != 200:
-        return False
-    return r.json().get("all_healthy", False)
+async def check_ai_gateway(client: httpx.AsyncClient) -> bool:
+    r = await client.get(f"{AI_GATEWAY}/health")
+    return r.status_code == 200
 
 
 CHECKS = [
@@ -68,7 +67,7 @@ CHECKS = [
     ("Ollama", OLLAMA, check_ollama),
     ("Piper", PIPER, check_piper),
     ("Whisper", WHISPER, check_whisper),
-    ("Providers API", GATEWAY, check_providers_api),
+    ("AI Gateway", AI_GATEWAY, check_ai_gateway),
 ]
 
 

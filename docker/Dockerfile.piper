@@ -12,10 +12,11 @@ RUN mkdir -p /opt/piper \
     && curl -fsSL -o /tmp/piper.tar.gz \
     "https://github.com/rhasspy/piper/releases/download/${PIPER_VERSION}/piper_linux_x86_64.tar.gz" \
     && tar -xzf /tmp/piper.tar.gz -C /opt/piper \
-    && ln -sf /opt/piper/piper /usr/local/bin/piper \
+    && chmod +x /opt/piper/piper/piper \
+    && ln -sf /opt/piper/piper/piper /usr/local/bin/piper \
     && rm /tmp/piper.tar.gz
 
-ENV LD_LIBRARY_PATH=/opt/piper
+ENV LD_LIBRARY_PATH=/opt/piper/piper
 
 # Voice model (PT-BR)
 RUN mkdir -p /models \
@@ -29,7 +30,7 @@ COPY docker/services/piper/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 COPY docker/services/piper/main.py .
 
-ENV PIPER_BIN=/usr/local/bin/piper
+ENV PIPER_BIN=/opt/piper/piper/piper
 ENV PIPER_MODEL_DIR=/models
 ENV PIPER_VOICE=${PIPER_VOICE}
 

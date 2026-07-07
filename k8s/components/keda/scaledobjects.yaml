@@ -95,3 +95,27 @@ spec:
         listName: contentos.publisher
         listLength: "5"
         databaseIndex: "0"
+    - type: redis
+      authenticationRef:
+        name: redis-trigger-auth
+      metadata:
+        address: redis:6379
+        listName: contentos.analytics
+        listLength: "4"
+        databaseIndex: "0"
+    - type: redis
+      authenticationRef:
+        name: redis-trigger-auth
+      metadata:
+        address: redis:6379
+        listName: contentos.learning
+        listLength: "4"
+        databaseIndex: "0"
+    - type: redis
+      authenticationRef:
+        name: redis-trigger-auth
+      metadata:
+        address: redis:6379
+        listName: contentos.multi_content
+        listLength: "3"
+        databaseIndex: "0"

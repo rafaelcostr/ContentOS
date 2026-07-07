@@ -55,6 +55,10 @@ class TikTokPlugin(PublishPlugin):
             prepared.status = "failed"
             prepared.error = "Missing TikTok access_token in channel credentials"
             return prepared
+        if not context.render_bytes:
+            prepared.status = "failed"
+            prepared.error = "Missing render bytes for TikTok upload"
+            return prepared
 
         try:
             async with httpx.AsyncClient(timeout=120.0) as client:
@@ -67,7 +71,12 @@ class TikTokPlugin(PublishPlugin):
                             "description": prepared.description,
                             "privacy_level": prepared.payload.get("privacy_level"),
                         },
-                        "source_info": {"source": "FILE_UPLOAD"},
+                        "source_info": {
+                            "source": "FILE_UPLOAD",
+                            "video_size": len(context.render_bytes),
+                            "chunk_size": len(context.render_bytes),
+                            "total_chunk_count": 1,
+                        },
                     },
                 )
                 if resp.status_code >= 400:
@@ -75,6 +84,20 @@ class TikTokPlugin(PublishPlugin):
                     prepared.error = resp.text[:500]
                     return prepared
                 data = resp.json()
+                upload_url = data.get("data", {}).get("upload_url")
+                if not upload_url:
+                    prepared.status = "failed"
+                    prepared.error = "TikTok upload_url missing from init response"
+                    return prepared
+                upload = await client.put(
+                    upload_url,
+                    content=context.render_bytes,
+                    headers={"Content-Type": "video/mp4", "Content-Range": f"bytes 0-{len(context.render_bytes) - 1}/{len(context.render_bytes)}"},
+                )
+                if upload.status_code >= 400:
+                    prepared.status = "failed"
+                    prepared.error = upload.text[:500]
+                    return prepared
                 prepared.status = "published"
                 prepared.external_id = data.get("data", {}).get("publish_id")
                 prepared.publish_url = f"https://www.tiktok.com/@preview/{prepared.external_id}"

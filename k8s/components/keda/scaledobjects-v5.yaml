@@ -1,0 +1,85 @@
+# KEDA ScaledObjects — V5 quality + media pools (V5.5.2)
+
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: agents-worker-v5-quality-scaler
+  namespace: contentos
+spec:
+  scaleTargetRef:
+    name: agents-worker-v5-quality
+  pollingInterval: 15
+  cooldownPeriod: 120
+  minReplicaCount: 1
+  maxReplicaCount: 10
+  triggers:
+    - type: redis
+      authenticationRef:
+        name: redis-trigger-auth
+      metadata:
+        address: redis:6379
+        listName: contentos.retention
+        listLength: "3"
+        databaseIndex: "0"
+    - type: redis
+      authenticationRef:
+        name: redis-trigger-auth
+      metadata:
+        address: redis:6379
+        listName: contentos.seo
+        listLength: "3"
+        databaseIndex: "0"
+    - type: redis
+      authenticationRef:
+        name: redis-trigger-auth
+      metadata:
+        address: redis:6379
+        listName: contentos.ai_director
+        listLength: "2"
+        databaseIndex: "0"
+    - type: redis
+      authenticationRef:
+        name: redis-trigger-auth
+      metadata:
+        address: redis:6379
+        listName: contentos.creative_memory
+        listLength: "3"
+        databaseIndex: "0"
+---
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: agents-worker-v5-media-scaler
+  namespace: contentos
+spec:
+  scaleTargetRef:
+    name: agents-worker-v5-media
+  pollingInterval: 15
+  cooldownPeriod: 180
+  minReplicaCount: 1
+  maxReplicaCount: 8
+  triggers:
+    - type: redis
+      authenticationRef:
+        name: redis-trigger-auth
+      metadata:
+        address: redis:6379
+        listName: contentos.media_analyze
+        listLength: "2"
+        databaseIndex: "0"
+    - type: redis
+      authenticationRef:
+        name: redis-trigger-auth
+      metadata:
+        address: redis:6379
+        listName: contentos.asset_collector
+        listLength: "3"
+        databaseIndex: "0"
+    - type: redis
+      authenticationRef:
+        name: redis-trigger-auth
+      metadata:
+        address: redis:6379
+        listName: contentos.clip_research
+        listLength: "3"
+        databaseIndex: "0"

@@ -21,7 +21,11 @@ def _tier(key: str) -> str:
         "video_review",
     ):
         return "v3"
+    if key == "auto_retry":
+        return "v4"
     if key == "content_intelligence":
+        return "v4"
+    if key == "content_score":
         return "v4"
     if key == "multi_content":
         return "v4"
@@ -29,9 +33,13 @@ def _tier(key: str) -> str:
         return "v4"
     if key == "learning":
         return "v4"
+    if key == "knowledge_base":
+        return "v4"
+    if key == "media_analyze":
+        return "v5"
     if key == "content_graph":
         return "v4"
-    if key in ("clip_research", "asset_collector", "asset_index", "thumbnail", "analytics"):
+    if key in ("clip_research", "asset_collector", "asset_index", "asset_search", "thumbnail", "analytics"):
         return "v2"
     return "core"
 

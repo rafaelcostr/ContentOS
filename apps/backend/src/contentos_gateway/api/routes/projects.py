@@ -21,8 +21,9 @@ from contentos_gateway.services.org_service import (
     project_access_clause,
     resolve_org_id,
 )
+from contentos_intelligence.application.recommendations import build_project_recommendations
 from fastapi import APIRouter, Depends, Header, HTTPException, status
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -32,6 +33,21 @@ router = APIRouter(prefix="/projects", tags=["Projects"])
 class CreatePipelineRequest(BaseModel):
     topic: str
     workflow_name: str | None = None
+
+
+class ContentRecommendationResponse(BaseModel):
+    kind: str
+    title: str
+    detail: str
+    confidence: str
+    source: str
+    action_href: str = "/factory"
+
+
+class ContentRecommendationReportResponse(BaseModel):
+    project_id: str
+    summary: str
+    recommendations: list[ContentRecommendationResponse] = Field(default_factory=list)
 
 
 @router.get("", response_model=list[ProjectResponse])
@@ -77,6 +93,22 @@ async def get_project(
 ) -> ProjectResponse:
     project = await get_accessible_project(db, project_id, user.id)
     return ProjectResponse.model_validate(project)
+
+
+@router.get("/{project_id}/recommendations", response_model=ContentRecommendationReportResponse)
+async def get_project_recommendations(
+    project_id: UUID,
+    db: AsyncSession = Depends(get_session),
+    user: User = Depends(get_current_user),
+) -> ContentRecommendationReportResponse:
+    await get_accessible_project(db, project_id, user.id)
+    report = await build_project_recommendations(db, project_id)
+    data = report.to_dict()
+    return ContentRecommendationReportResponse(
+        project_id=data["project_id"],
+        summary=data["summary"],
+        recommendations=[ContentRecommendationResponse(**item) for item in data["recommendations"]],
+    )
 
 
 @router.get("/{project_id}/pipelines", response_model=list[PipelineResponse])

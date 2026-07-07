@@ -45,4 +45,5 @@ A missão descreve módulos com nomes conceituais. O código usa nomes equivalen
 |----------------|-------|
 | `v1-default` | 9 |
 | `v2-full` | 9 + agents async |
-| `v2-dynamic` | 14 (missão completa) |
+| `v2-dynamic` | 16 (missão completa + media_analyze) |
+

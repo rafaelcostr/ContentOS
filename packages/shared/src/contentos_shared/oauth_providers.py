@@ -8,6 +8,30 @@ from urllib.parse import urlencode
 
 SUPPORTED_OAUTH_PLATFORMS = frozenset({"youtube", "tiktok", "instagram"})
 
+# V5.4.1 — extra scopes for post-publish analytics (merged at authorize time)
+ANALYTICS_OAUTH_SCOPES: dict[str, tuple[str, ...]] = {
+    "youtube": ("https://www.googleapis.com/auth/yt-analytics.readonly",),
+    "tiktok": ("user.info.basic", "user.info.stats", "video.list", "comment.list"),
+    "instagram": ("instagram_manage_insights", "instagram_manage_comments"),
+}
+
+
+def oauth_analytics_enabled() -> bool:
+    import os
+
+    return os.getenv("PLATFORM_ANALYTICS_ENABLED", "true").lower() in ("1", "true", "yes")
+
+
+def _merge_scopes(platform: str, base: tuple[str, ...]) -> tuple[str, ...]:
+    if not oauth_analytics_enabled():
+        return base
+    extra = ANALYTICS_OAUTH_SCOPES.get(platform, ())
+    merged: list[str] = []
+    for scope in (*base, *extra):
+        if scope not in merged:
+            merged.append(scope)
+    return tuple(merged)
+
 
 @dataclass(frozen=True)
 class OAuthProviderConfig:
@@ -44,9 +68,12 @@ def get_oauth_config(platform: str) -> OAuthProviderConfig | None:
             client_secret=client_secret,
             authorize_url="https://accounts.google.com/o/oauth2/v2/auth",
             token_url="https://oauth2.googleapis.com/token",
-            scopes=(
-                "https://www.googleapis.com/auth/youtube.upload",
-                "https://www.googleapis.com/auth/youtube.readonly",
+            scopes=_merge_scopes(
+                platform,
+                (
+                    "https://www.googleapis.com/auth/youtube.upload",
+                    "https://www.googleapis.com/auth/youtube.readonly",
+                ),
             ),
             redirect_uri=redirect,
             extra_authorize_params={"access_type": "offline", "prompt": "consent"},
@@ -63,7 +90,7 @@ def get_oauth_config(platform: str) -> OAuthProviderConfig | None:
             client_secret=client_secret,
             authorize_url="https://www.tiktok.com/v2/auth/authorize/",
             token_url="https://open.tiktokapis.com/v2/oauth/token/",
-            scopes=("video.upload", "video.publish"),
+            scopes=_merge_scopes(platform, ("video.upload", "video.publish")),
             redirect_uri=redirect,
         )
 
@@ -78,11 +105,14 @@ def get_oauth_config(platform: str) -> OAuthProviderConfig | None:
             client_secret=client_secret,
             authorize_url="https://www.facebook.com/v19.0/dialog/oauth",
             token_url="https://graph.facebook.com/v19.0/oauth/access_token",
-            scopes=(
-                "instagram_basic",
-                "instagram_content_publish",
-                "pages_show_list",
-                "pages_read_engagement",
+            scopes=_merge_scopes(
+                platform,
+                (
+                    "instagram_basic",
+                    "instagram_content_publish",
+                    "pages_show_list",
+                    "pages_read_engagement",
+                ),
             ),
             redirect_uri=redirect,
         )

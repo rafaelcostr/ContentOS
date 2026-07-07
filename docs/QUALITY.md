@@ -13,6 +13,9 @@ The **Quality** step validates the rendered video and produces a **0–10 techni
 | audio | Narration ref + audio stream in file |
 | duration | 15–60s ideal (partial credit outside) |
 | subtitles | Segments or subtitle files |
+| subtitle_sync | SRT cue timing vs segment list (when both present) |
+| bitrate | Minimum `QUALITY_MIN_BITRATE_BPS` from ffprobe |
+| real_clips / narration | When `QUALITY_REQUIRE_REAL_MEDIA=true` in production |
 
 Overall **quality_score** = rounded average of dimension scores (0–10).
 
@@ -20,7 +23,11 @@ Overall **quality_score** = rounded average of dimension scores (0–10).
 
 ```env
 QUALITY_MIN_SCORE=6
+QUALITY_REQUIRE_REAL_MEDIA=
+QUALITY_MIN_BITRATE_BPS=1000000
 ```
+
+Unified publish gate: `contentos_shared.audiovisual_qa.evaluate_publish_gate()` — used by `auto_retry` and `publisher`.
 
 - `quality_passed=true` when score ≥ min, no critical failures (missing render/audio), and no blocking errors
 - On fail → workflow retries **`editor`** (unchanged)

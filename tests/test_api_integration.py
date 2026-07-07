@@ -126,3 +126,67 @@ async def test_metrics_system(client: AsyncClient, auth_headers: dict):
     data = resp.json()
     assert "cpu" in data
     assert "memory" in data
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_publish_status(client: AsyncClient, auth_headers: dict):
+    create = await client.post(
+        "/api/v1/projects",
+        json={"name": "Publish Status Project"},
+        headers=auth_headers,
+    )
+    assert create.status_code == 201
+    project_id = create.json()["id"]
+
+    resp = await client.get(f"/api/v1/publish/status?project_id={project_id}", headers=auth_headers)
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["publish_mode"] in ("dry_run", "prepare_only", "live")
+    assert "publish_require_qa" in data
+    assert data["project_id"] == project_id
+    assert isinstance(data["platforms"], list)
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+async def test_publish_attempts_empty_and_list(client: AsyncClient, auth_headers: dict):
+    from contentos_database.platform_publications import persist_platform_publications
+
+    create = await client.post(
+        "/api/v1/projects",
+        json={"name": "Publish Attempts Project"},
+        headers=auth_headers,
+    )
+    assert create.status_code == 201
+    project_id = create.json()["id"]
+    project_uuid = uuid.UUID(project_id)
+
+    empty = await client.get(f"/api/v1/publish/attempts?project_id={project_id}", headers=auth_headers)
+    assert empty.status_code == 200
+    assert empty.json() == []
+
+    written = await persist_platform_publications(
+        project_uuid,
+        None,
+        "dry_run",
+        {
+            "youtube": {
+                "status": "dry_run",
+                "title": "E2E title",
+                "external_id": None,
+                "publish_url": "https://example.com/preview",
+            }
+        },
+    )
+    assert written == 1
+
+    listed = await client.get(f"/api/v1/publish/attempts?project_id={project_id}", headers=auth_headers)
+    assert listed.status_code == 200
+    rows = listed.json()
+    assert len(rows) == 1
+    assert rows[0]["platform"] == "youtube"
+    assert rows[0]["publish_mode"] == "dry_run"
+    assert rows[0]["status"] == "dry_run"
+    assert rows[0]["title"] == "E2E title"
+    assert rows[0]["publish_url"] == "https://example.com/preview"

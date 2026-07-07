@@ -21,16 +21,46 @@ Montar o vídeo final **1080x1920 @ 60fps H264** a partir de:
 | **Legendas** | Burn-in SRT com estilo bold + outline |
 | **Barra de progresso** | `drawbox` animado na base do vídeo |
 | **Música de fundo** | Ambient gerado (lavfi) ou `assets/music/ambient.mp3` no MinIO |
-| **Mix de áudio** | Narração loudnorm + música duckada via `amix` |
+| **Speed ramp** | `setpts` linear por cena (0.5×–2.0×) |
+| **Ducking** | `sidechaincompress` — música abaixa quando há narração |
+| **Presets** | `default`, `dynamic`, `calm`, `punchy` via payload ou env |
+| **Mix de áudio** | Narração loudnorm + música com ducking real ou `amix` simples |
+
+---
+
+## Cinematic Editor v1 (V5.1.3)
+
+Payload opcional no step `editor`:
+
+```json
+{
+  "cinematic": {
+    "preset": "dynamic",
+    "enable_zoom": true,
+    "enable_ducking": true,
+    "enable_speed_ramp": true,
+    "music_volume": 0.14,
+    "ducking_ratio": 10,
+    "ducking_threshold": 0.025
+  }
+}
+```
+
+Movements no storyboard / director plan: `speed-ramp-up`, `speed-ramp-down`, `slow-mo`.
+
+Módulo: `contentos_shared/cinematic/` — `CinematicSettings`, presets, `apply_directive_to_segment`.
 
 ---
 
 ## Configuração (.env)
 
 ```env
+ENABLE_CINEMATIC_EDITOR=true
+CINEMATIC_PRESET=default
 EDITOR_ENABLE_ZOOM=true
 EDITOR_MUSIC_VOLUME=0.12
 EDITOR_MUSIC_KEY=assets/music/ambient.mp3
+EDITOR_FADE_DURATION=0.4
 ```
 
 Upload música customizada:

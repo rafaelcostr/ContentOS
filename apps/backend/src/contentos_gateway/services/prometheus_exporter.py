@@ -130,12 +130,14 @@ async def refresh_prometheus_metrics(db: AsyncSession | None = None) -> None:
         POSTGRES_UP.set(1 if postgres_m.get("status") == "healthy" else 0)
         if postgres_m.get("status") == "healthy":
             POSTGRES_LATENCY_SECONDS.set(float(postgres_m.get("latency_ms", 0)) / 1000.0)
+            await _refresh_db_counts(db)
         else:
             POSTGRES_LATENCY_SECONDS.set(0)
-        await _refresh_db_counts(db)
+            _reset_db_counts()
     else:
         POSTGRES_UP.set(0)
         POSTGRES_LATENCY_SECONDS.set(0)
+        _reset_db_counts()
 
     celery_m = await collect_celery_queues()
     CELERY_WORKERS.set(float(celery_m.get("workers", 0)))
@@ -158,6 +160,15 @@ async def _refresh_db_counts(db: AsyncSession) -> None:
     job_counts = {status.value: count for status, count in job_rows.all()}
     for status in JobStatus:
         JOBS_TOTAL.labels(status=status.value).set(float(job_counts.get(status.value, 0)))
+
+
+def _reset_db_counts() -> None:
+    from contentos_database.models import JobStatus, PipelineStatus
+
+    for status in PipelineStatus:
+        PIPELINES_TOTAL.labels(status=status.value).set(0)
+    for status in JobStatus:
+        JOBS_TOTAL.labels(status=status.value).set(0)
 
 
 def render_prometheus_metrics() -> tuple[bytes, str]:

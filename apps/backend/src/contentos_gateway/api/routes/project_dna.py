@@ -6,6 +6,12 @@ from contentos_database.session import get_session
 from contentos_gateway.api.deps import get_current_user, require_editor
 from contentos_gateway.services.org_service import get_accessible_project
 from contentos_memory import get_memory_service, reset_memory_service_cache
+from contentos_memory.domain.dna_v2 import (
+    VALID_CINEMATIC_PRESETS,
+    VALID_CONTENT_ANGLES,
+    normalize_cinematic_preset,
+    normalize_content_angle,
+)
 from contentos_memory.domain.project_dna import VALID_FORMATS, VALID_PACES, clamp_humor_level, normalize_pace
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field, field_validator
@@ -23,6 +29,11 @@ class ProjectDnaResponse(BaseModel):
     preferred_formats: list[str] = Field(default_factory=list)
     hook_patterns: list[str] = Field(default_factory=list)
     cta_style: str = ""
+    cinematic_preset: str = ""
+    content_angle: str = ""
+    brand_keywords: list[str] = Field(default_factory=list)
+    editing_preferences: dict = Field(default_factory=dict)
+    default_voice_builtin: str = ""
     dna_context_preview: str = ""
 
 
@@ -34,6 +45,11 @@ class ProjectDnaPatchBody(BaseModel):
     preferred_formats: list[str] | None = None
     hook_patterns: list[str] | None = None
     cta_style: str | None = None
+    cinematic_preset: str | None = None
+    content_angle: str | None = None
+    brand_keywords: list[str] | None = None
+    editing_preferences: dict | None = None
+    default_voice_builtin: str | None = None
 
     @field_validator("humor_level")
     @classmethod
@@ -59,6 +75,26 @@ class ProjectDnaPatchBody(BaseModel):
         if invalid:
             raise ValueError(f"unknown formats: {', '.join(invalid)}")
         return value
+
+    @field_validator("cinematic_preset")
+    @classmethod
+    def validate_cinematic_preset(cls, value: str | None) -> str | None:
+        if value is None or value == "":
+            return value
+        normalized = normalize_cinematic_preset(value)
+        if not normalized:
+            raise ValueError(f"cinematic_preset must be one of: {', '.join(sorted(VALID_CINEMATIC_PRESETS))}")
+        return normalized
+
+    @field_validator("content_angle")
+    @classmethod
+    def validate_content_angle(cls, value: str | None) -> str | None:
+        if value is None or value == "":
+            return value
+        normalized = normalize_content_angle(value)
+        if not normalized:
+            raise ValueError(f"content_angle must be one of: {', '.join(sorted(VALID_CONTENT_ANGLES))}")
+        return normalized
 
 
 def _to_dna_response(data) -> ProjectDnaResponse:

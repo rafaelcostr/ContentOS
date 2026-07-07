@@ -1,7 +1,5 @@
 """Provider factory and protocol tests."""
 
-import os
-
 import pytest
 from contentos_shared.plugins.registry import ContentOSPlugin, PluginMeta, PluginRegistry
 from contentos_shared.providers.ai.ollama import OllamaTextProvider
@@ -14,41 +12,47 @@ from contentos_shared.providers.subtitle.local_whisper import LocalWhisperProvid
 from contentos_shared.providers.subtitle.openai_whisper import OpenAIWhisperProvider
 
 
-def test_text_provider_ollama_default():
+def test_text_provider_ollama_direct(monkeypatch):
+    monkeypatch.setenv("USE_AI_GATEWAY", "false")
     factory = ProviderFactory(text_provider="ollama")
     provider = factory.text()
     assert isinstance(provider, OllamaTextProvider)
     assert isinstance(provider, TextProvider)
 
 
-def test_text_provider_openai(monkeypatch):
+def test_text_provider_openai_direct(monkeypatch):
+    monkeypatch.setenv("USE_AI_GATEWAY", "false")
     monkeypatch.setenv("OPENAI_API_KEY", "sk-test-dummy")
     factory = ProviderFactory(text_provider="openai")
     provider = factory.text()
     assert isinstance(provider, OpenAITextProvider)
 
 
-def test_speech_provider_piper():
+def test_speech_provider_piper_direct(monkeypatch):
+    monkeypatch.setenv("USE_AI_GATEWAY", "false")
     factory = ProviderFactory(speech_provider="piper")
     provider = factory.speech()
     assert isinstance(provider, PiperSpeechProvider)
     assert isinstance(provider, SpeechProvider)
 
 
-def test_speech_provider_elevenlabs():
+def test_speech_provider_elevenlabs_direct(monkeypatch):
+    monkeypatch.setenv("USE_AI_GATEWAY", "false")
     factory = ProviderFactory(speech_provider="elevenlabs")
     provider = factory.speech()
     assert isinstance(provider, ElevenLabsSpeechProvider)
 
 
-def test_subtitle_provider_local():
+def test_subtitle_provider_local_direct(monkeypatch):
+    monkeypatch.setenv("USE_AI_GATEWAY", "false")
     factory = ProviderFactory(subtitle_provider="local")
     provider = factory.subtitle()
     assert isinstance(provider, LocalWhisperProvider)
     assert isinstance(provider, SubtitleProvider)
 
 
-def test_subtitle_provider_openai(monkeypatch):
+def test_subtitle_provider_openai_direct(monkeypatch):
+    monkeypatch.setenv("USE_AI_GATEWAY", "false")
     monkeypatch.setenv("OPENAI_API_KEY", "sk-test-dummy")
     factory = ProviderFactory(subtitle_provider="openai")
     provider = factory.subtitle()
@@ -64,7 +68,8 @@ def test_factory_status():
     assert status["mode"] in ("direct", "ai-gateway")
 
 
-def test_unknown_provider_raises():
+def test_unknown_provider_raises_in_direct_mode(monkeypatch):
+    monkeypatch.setenv("USE_AI_GATEWAY", "false")
     factory = ProviderFactory(text_provider="invalid")
     with pytest.raises(ValueError, match="Unknown TEXT_PROVIDER"):
         factory.text()

@@ -3,6 +3,9 @@
 import json
 
 from contentos_agents.handlers._pipeline_base import PipelineAwareHandler
+from contentos_intelligence.application.performance_learning.pipeline_feedback import (
+    build_pipeline_performance_feedback,
+)
 from contentos_shared.enums import JobStatus
 from contentos_shared.schemas.agent import AgentTaskInput, AgentTaskOutput
 
@@ -23,6 +26,7 @@ class AnalyticsAgentHandler(PipelineAwareHandler):
         logs = [f"[analytics] Analyzing pipeline {task_input.pipeline_id}"]
 
         metrics = svc.collect_metrics(payload) if svc else {}
+        performance_feedback = build_pipeline_performance_feedback({**payload, "metrics": metrics})
         models_used = svc.collect_models_used() if svc else {}
         prompts_used = svc.collect_prompts_used() if svc else {}
         publication = payload.get("publication") or {}
@@ -32,6 +36,7 @@ class AnalyticsAgentHandler(PipelineAwareHandler):
             {
                 "metrics_json": json.dumps(metrics, ensure_ascii=False),
                 "publication_json": json.dumps(publication, ensure_ascii=False),
+                "performance_feedback_json": json.dumps(performance_feedback, ensure_ascii=False),
             },
             project_id=task_input.project_id,
         )
@@ -61,10 +66,11 @@ class AnalyticsAgentHandler(PipelineAwareHandler):
             insight_data = AnalyticsInsightData(
                 project_id=task_input.project_id,
                 pipeline_id=task_input.pipeline_id,
-                metrics=metrics,
+                metrics={**metrics, "performance_feedback": performance_feedback},
                 analysis=analysis,
                 models_used=models_used,
                 prompts_used=prompts_used,
+                performance_feedback=performance_feedback,
                 applied_to_memory=applied,
             )
             svc.save_insight(insight_data)
@@ -75,6 +81,7 @@ class AnalyticsAgentHandler(PipelineAwareHandler):
             status=JobStatus.COMPLETED.value,
             data={
                 "metrics": metrics,
+                "performance_feedback": performance_feedback,
                 "analysis": analysis,
                 "models_used": models_used,
                 "prompts_used": prompts_used,

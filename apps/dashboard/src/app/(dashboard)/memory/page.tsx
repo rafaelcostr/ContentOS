@@ -23,7 +23,28 @@ const emptyDnaForm = {
   hook_patterns: "",
   visual_primary_color: "",
   visual_mood: "",
+  cinematic_preset: "",
+  content_angle: "",
+  brand_keywords: "",
 };
+
+const CINEMATIC_PRESETS = [
+  { value: "", label: "(padrão)" },
+  { value: "default", label: "Default" },
+  { value: "dynamic", label: "Dynamic" },
+  { value: "calm", label: "Calm" },
+  { value: "punchy", label: "Punchy" },
+];
+
+const CONTENT_ANGLES = [
+  { value: "", label: "(padrão)" },
+  { value: "hype", label: "Hype" },
+  { value: "documentary", label: "Documentário" },
+  { value: "tutorial", label: "Tutorial" },
+  { value: "news", label: "Notícia" },
+  { value: "storytelling", label: "Storytelling" },
+  { value: "calm", label: "Calmo" },
+];
 
 const PACE_OPTIONS = [
   { value: "", label: "(padrão)" },
@@ -87,6 +108,9 @@ export default function MemoryPage() {
         hook_patterns: (dna.hook_patterns ?? []).join(", "),
         visual_primary_color: dna.visual_style?.primary_color ?? "",
         visual_mood: dna.visual_style?.mood ?? "",
+        cinematic_preset: dna.cinematic_preset ?? "",
+        content_angle: dna.content_angle ?? "",
+        brand_keywords: (dna.brand_keywords ?? []).join(", "),
       });
     }
   }, [dna]);
@@ -141,6 +165,12 @@ export default function MemoryPage() {
           ...(dnaForm.visual_primary_color ? { primary_color: dnaForm.visual_primary_color } : {}),
           ...(dnaForm.visual_mood ? { mood: dnaForm.visual_mood } : {}),
         },
+        cinematic_preset: dnaForm.cinematic_preset || null,
+        content_angle: dnaForm.content_angle || null,
+        brand_keywords: dnaForm.brand_keywords
+          .split(",")
+          .map((v) => v.trim())
+          .filter(Boolean),
       }),
     onSuccess: () => {
       setMessage("DNA do projeto salvo — injetado em memory_context e dna_context.");
@@ -155,7 +185,7 @@ export default function MemoryPage() {
       <header className="mb-8">
         <h1 className="text-2xl font-bold tracking-tight">Memory Manager</h1>
         <p className="text-sm text-muted-foreground">
-          Memória criativa e Project DNA — injetados nos prompts dos agentes (V2.4 + V4)
+          Memória criativa e Project DNA — injetados nos prompts e no pipeline (V2.4 + V4 + V5.1.4)
         </p>
       </header>
 
@@ -220,8 +250,10 @@ export default function MemoryPage() {
           </div>
 
           <div className="space-y-4 rounded-lg border border-border bg-card p-6">
-            <h2 className="font-semibold">Project DNA (V4)</h2>
-            <p className="text-xs text-muted-foreground">Identidade do projeto — ritmo, humor, visual, formatos</p>
+            <h2 className="font-semibold">Project DNA (V4 + V5.1.4)</h2>
+            <p className="text-xs text-muted-foreground">
+              Identidade do projeto — ritmo, humor, visual, ângulo e preset cinematográfico
+            </p>
 
             <div>
               <label className="text-xs text-muted-foreground">Humor (0–1)</label>
@@ -249,6 +281,45 @@ export default function MemoryPage() {
                   </option>
                 ))}
               </select>
+            </div>
+
+            <div>
+              <label className="text-xs text-muted-foreground">Preset cinematográfico</label>
+              <select
+                className="mt-1 w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+                value={dnaForm.cinematic_preset}
+                onChange={(e) => setDnaForm((f) => ({ ...f, cinematic_preset: e.target.value }))}
+              >
+                {CINEMATIC_PRESETS.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="text-xs text-muted-foreground">Ângulo de conteúdo</label>
+              <select
+                className="mt-1 w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+                value={dnaForm.content_angle}
+                onChange={(e) => setDnaForm((f) => ({ ...f, content_angle: e.target.value }))}
+              >
+                {CONTENT_ANGLES.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="text-xs text-muted-foreground">Palavras-chave da marca (vírgulas)</label>
+              <input
+                className="mt-1 w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+                value={dnaForm.brand_keywords}
+                onChange={(e) => setDnaForm((f) => ({ ...f, brand_keywords: e.target.value }))}
+              />
             </div>
 
             {(
