@@ -2,6 +2,8 @@
 
 from contentos_intelligence.application.platform_analytics.fetchers import PLATFORM_FETCHERS
 from contentos_intelligence.application.platform_analytics.service import (
+    build_youtube_connection_status,
+    get_latest_channel_overview,
     list_recent_snapshots,
     platform_analytics_enabled,
     platform_analytics_limit,
@@ -12,6 +14,8 @@ from contentos_intelligence.application.platform_analytics.service import (
 
 __all__ = [
     "PLATFORM_FETCHERS",
+    "build_youtube_connection_status",
+    "get_latest_channel_overview",
     "list_recent_snapshots",
     "platform_analytics_enabled",
     "platform_analytics_limit",

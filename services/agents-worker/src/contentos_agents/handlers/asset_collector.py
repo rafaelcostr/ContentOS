@@ -46,8 +46,9 @@ class AssetCollectorAgentHandler(PipelineAwareHandler):
         scenes = task_input.payload.get("scenes") or []
         expected_labels = _expected_scene_labels(scenes, scene_candidates)
         min_per_scene = _media_min_assets_per_scene()
+        max_scenes = _media_collect_max_scenes()
 
-        for scene in scene_candidates:
+        for scene in scene_candidates[:max_scenes]:
             label = scene.get("scene_label", "scene")
             candidates = scene.get("candidates") or []
             if not candidates:
@@ -174,6 +175,13 @@ def _media_min_assets_per_scene() -> int:
         return max(1, int(os.getenv("MEDIA_MIN_ASSETS_PER_SCENE", "1")))
     except ValueError:
         return 1
+
+
+def _media_collect_max_scenes() -> int:
+    try:
+        return max(1, int(os.getenv("MEDIA_COLLECT_MAX_SCENES", "8")))
+    except ValueError:
+        return 8
 
 
 def _expected_scene_labels(scenes: list[dict], scene_candidates: list[dict]) -> list[str]:

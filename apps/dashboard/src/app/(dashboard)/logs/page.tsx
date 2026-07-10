@@ -6,7 +6,7 @@ import { api } from "@/lib/api";
 import { formatDate } from "@/lib/utils";
 
 export default function LogsPage() {
-  const { data: logs = [], isLoading } = useQuery({ queryKey: ["logs"], queryFn: api.getLogs });
+  const { data: logs = [], isLoading } = useQuery({ queryKey: ["logs"], queryFn: () => api.getLogs() });
 
   return (
     <div className="p-8">

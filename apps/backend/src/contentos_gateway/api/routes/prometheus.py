@@ -34,10 +34,11 @@ async def prometheus_metrics(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Prometheus metrics disabled")
     _authorize_prometheus(authorization, x_prometheus_token)
 
-    from contentos_database.session import _session_factory
+    from contentos_database.session import get_session_factory
 
-    if _session_factory is not None:
-        async with _session_factory() as db:
+    session_factory = get_session_factory()
+    if session_factory is not None:
+        async with session_factory() as db:
             await refresh_prometheus_metrics(db)
     else:
         await refresh_prometheus_metrics(None)

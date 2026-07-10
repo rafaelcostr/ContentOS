@@ -6,6 +6,7 @@ from typing import Any
 
 import httpx
 
+from contentos_intelligence.application.platform_analytics.youtube import fetch_youtube_channel_data
 from contentos_intelligence.domain.platform_metrics import PlatformMediaMetrics
 
 
@@ -16,77 +17,7 @@ def _engagement_rate(views: int, likes: int, comments: int, shares: int) -> floa
 
 
 async def fetch_youtube_analytics(credentials: dict[str, Any], *, limit: int = 10) -> tuple[list[PlatformMediaMetrics], dict[str, Any]]:
-    token = credentials.get("access_token")
-    if not token:
-        return [], {"error": "missing_access_token"}
-
-    headers = {"Authorization": f"Bearer {token}"}
-    channel_totals: dict[str, Any] = {}
-    items: list[PlatformMediaMetrics] = []
-
-    async with httpx.AsyncClient(timeout=30.0) as client:
-        ch = await client.get(
-            "https://www.googleapis.com/youtube/v3/channels",
-            params={"part": "statistics,snippet", "mine": "true"},
-            headers=headers,
-        )
-        if ch.status_code == 403:
-            return [], {"needs_reconnect": True, "error": "insufficient_scope"}
-        if ch.status_code >= 400:
-            return [], {"error": ch.text[:200]}
-        ch_data = ch.json().get("items", [])
-        if ch_data:
-            stats = ch_data[0].get("statistics", {})
-            channel_totals = {
-                "subscriber_count": int(stats.get("subscriberCount") or 0),
-                "view_count": int(stats.get("viewCount") or 0),
-                "video_count": int(stats.get("videoCount") or 0),
-            }
-
-        search = await client.get(
-            "https://www.googleapis.com/youtube/v3/search",
-            params={"part": "id", "forMine": "true", "type": "video", "maxResults": min(limit, 25), "order": "date"},
-            headers=headers,
-        )
-        if search.status_code >= 400:
-            return items, channel_totals
-        video_ids = [
-            item["id"]["videoId"]
-            for item in search.json().get("items", [])
-            if item.get("id", {}).get("videoId")
-        ]
-        if not video_ids:
-            return items, channel_totals
-
-        videos = await client.get(
-            "https://www.googleapis.com/youtube/v3/videos",
-            params={"part": "statistics,snippet", "id": ",".join(video_ids)},
-            headers=headers,
-        )
-        if videos.status_code >= 400:
-            return items, channel_totals
-        for vid in videos.json().get("items", []):
-            stats = vid.get("statistics", {})
-            snippet = vid.get("snippet", {})
-            views = int(stats.get("viewCount") or 0)
-            likes = int(stats.get("likeCount") or 0)
-            comments = int(stats.get("commentCount") or 0)
-            vid_id = vid.get("id")
-            items.append(
-                PlatformMediaMetrics(
-                    platform="youtube",
-                    external_media_id=vid_id,
-                    title=snippet.get("title"),
-                    views=views,
-                    likes=likes,
-                    comments=comments,
-                    shares=0,
-                    engagement_rate=_engagement_rate(views, likes, comments, 0),
-                    published_at=snippet.get("publishedAt"),
-                    url=f"https://www.youtube.com/watch?v={vid_id}" if vid_id else None,
-                )
-            )
-    return items, channel_totals
+    return await fetch_youtube_channel_data(credentials, limit=limit)
 
 
 async def fetch_tiktok_analytics(credentials: dict[str, Any], *, limit: int = 10) -> tuple[list[PlatformMediaMetrics], dict[str, Any]]:

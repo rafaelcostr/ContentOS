@@ -226,11 +226,13 @@ class Project(Base):
 
     owner: Mapped["User"] = relationship(back_populates="projects")
     organization: Mapped["Organization | None"] = relationship(back_populates="projects")
-    pipelines: Mapped[list["Pipeline"]] = relationship(back_populates="project")
-    videos: Mapped[list["Video"]] = relationship(back_populates="project")
-    memory: Mapped["ProjectMemory | None"] = relationship(back_populates="project", uselist=False)
-    schedules: Mapped[list["PipelineSchedule"]] = relationship(back_populates="project")
-    content_batches: Mapped[list["ContentBatch"]] = relationship(back_populates="project")
+    pipelines: Mapped[list["Pipeline"]] = relationship(back_populates="project", cascade="all, delete-orphan")
+    videos: Mapped[list["Video"]] = relationship(back_populates="project", cascade="all, delete-orphan")
+    memory: Mapped["ProjectMemory | None"] = relationship(
+        back_populates="project", uselist=False, cascade="all, delete-orphan"
+    )
+    schedules: Mapped[list["PipelineSchedule"]] = relationship(back_populates="project", cascade="all, delete-orphan")
+    content_batches: Mapped[list["ContentBatch"]] = relationship(back_populates="project", cascade="all, delete-orphan")
 
 
 class ContentBatch(Base):
@@ -276,6 +278,7 @@ class PipelineSchedule(Base):
     next_run_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), index=True)
     last_pipeline_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
     last_error: Mapped[str | None] = mapped_column(String(500))
+    context_json: Mapped[dict | None] = mapped_column(JSON)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
 
@@ -606,6 +609,13 @@ class ProjectMemory(Base):
     content_angle: Mapped[str | None] = mapped_column(String(40))
     brand_keywords: Mapped[list | None] = mapped_column(JSON)
     editing_preferences: Mapped[dict | None] = mapped_column(JSON)
+    # Growth OS Fase 5 — Brand Intelligence (extends DNA, same row)
+    mission: Mapped[str | None] = mapped_column(Text)
+    objectives: Mapped[list | None] = mapped_column(JSON)
+    values: Mapped[list | None] = mapped_column(JSON)
+    target_audience: Mapped[str | None] = mapped_column(String(500))
+    editorial_rules: Mapped[list | None] = mapped_column(JSON)
+    color_palette: Mapped[dict | None] = mapped_column(JSON)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
 
     project: Mapped["Project"] = relationship(back_populates="memory")
@@ -934,4 +944,139 @@ class PlatformPublicationRow(Base):
     publish_url: Mapped[str | None] = mapped_column(String(1000))
     error: Mapped[str | None] = mapped_column(Text)
     payload: Mapped[dict | None] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
+
+
+class GrowthChannelProfileRow(Base):
+    """Growth profile data attached to an existing channel."""
+
+    __tablename__ = "growth_channel_profiles"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    project_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("projects.id", ondelete="CASCADE"), index=True)
+    channel_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("channels.id", ondelete="CASCADE"), index=True, unique=True)
+    score: Mapped[float] = mapped_column(Float, default=0.0)
+    profile_data: Mapped[dict | None] = mapped_column(JSON)
+    report: Mapped[dict | None] = mapped_column(JSON)
+    analyzed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+
+
+class ChannelMemoryRow(Base):
+    """Per-channel creative patterns — Growth OS Fase 6."""
+
+    __tablename__ = "channel_memory"
+
+    channel_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("channels.id", ondelete="CASCADE"), primary_key=True)
+    project_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("projects.id", ondelete="CASCADE"), index=True)
+    winning_videos: Mapped[list | None] = mapped_column(JSON)
+    losing_videos: Mapped[list | None] = mapped_column(JSON)
+    top_hooks: Mapped[list | None] = mapped_column(JSON)
+    top_ctas: Mapped[list | None] = mapped_column(JSON)
+    top_themes: Mapped[list | None] = mapped_column(JSON)
+    top_hashtags: Mapped[list | None] = mapped_column(JSON)
+    best_posting_hours: Mapped[list | None] = mapped_column(JSON)
+    insights: Mapped[list | None] = mapped_column(JSON)
+    notes: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+
+
+class GrowthCompetitorRow(Base):
+    """Competitor profile tracked by Growth AI."""
+
+    __tablename__ = "growth_competitors"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    project_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("projects.id", ondelete="CASCADE"), index=True)
+    platform: Mapped[str] = mapped_column(String(50), index=True)
+    handle: Mapped[str] = mapped_column(String(255), index=True)
+    display_name: Mapped[str] = mapped_column(String(255))
+    url: Mapped[str | None] = mapped_column(String(1000))
+    notes: Mapped[str] = mapped_column(Text, default="")
+    metrics: Mapped[dict | None] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+
+
+class GrowthReportRow(Base):
+    """Persisted Growth AI report snapshot."""
+
+    __tablename__ = "growth_reports"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    project_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("projects.id", ondelete="CASCADE"), index=True)
+    channel_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("channels.id", ondelete="SET NULL"), index=True)
+    score: Mapped[float] = mapped_column(Float, default=0.0)
+    summary: Mapped[str] = mapped_column(Text, default="")
+    report: Mapped[dict | None] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
+
+
+class GrowthStrategyRow(Base):
+    """Growth strategy draft or active plan."""
+
+    __tablename__ = "growth_strategies"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    project_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("projects.id", ondelete="CASCADE"), index=True)
+    channel_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("channels.id", ondelete="SET NULL"), index=True)
+    status: Mapped[str] = mapped_column(String(40), default="draft", index=True)
+    goals: Mapped[list | None] = mapped_column(JSON)
+    kpis: Mapped[dict | None] = mapped_column(JSON)
+    cadence: Mapped[dict | None] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+
+
+class GrowthRecommendationRow(Base):
+    """Actionable Growth AI recommendation."""
+
+    __tablename__ = "growth_recommendations"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    project_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("projects.id", ondelete="CASCADE"), index=True)
+    channel_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("channels.id", ondelete="SET NULL"), index=True)
+    kind: Mapped[str] = mapped_column(String(80), index=True)
+    title: Mapped[str] = mapped_column(String(300))
+    detail: Mapped[str] = mapped_column(Text, default="")
+    priority: Mapped[str] = mapped_column(String(30), default="medium", index=True)
+    source: Mapped[str] = mapped_column(String(80), default="growth", index=True)
+    status: Mapped[str] = mapped_column(String(40), default="open", index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
+
+
+class GrowthAssetPerformanceRow(Base):
+    """Growth performance aggregation for a media asset."""
+
+    __tablename__ = "growth_asset_performance"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    project_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("projects.id", ondelete="CASCADE"), index=True)
+    channel_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("channels.id", ondelete="SET NULL"), index=True)
+    asset_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("assets.id", ondelete="SET NULL"), index=True)
+    uses: Mapped[int] = mapped_column(Integer, default=0)
+    ctr: Mapped[float | None] = mapped_column(Float)
+    retention_pct: Mapped[float | None] = mapped_column(Float)
+    watch_time_seconds: Mapped[float | None] = mapped_column(Float)
+    engagement_rate: Mapped[float | None] = mapped_column(Float)
+    ai_score: Mapped[float | None] = mapped_column(Float)
+    metadata_: Mapped[dict | None] = mapped_column(JSON)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow, index=True)
+
+
+class GrowthContentCalendarRow(Base):
+    """Growth content calendar item."""
+
+    __tablename__ = "growth_content_calendar"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    project_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("projects.id", ondelete="CASCADE"), index=True)
+    channel_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("channels.id", ondelete="SET NULL"), index=True)
+    title: Mapped[str] = mapped_column(String(300))
+    topic: Mapped[str] = mapped_column(String(500), default="")
+    planned_for: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), index=True)
+    status: Mapped[str] = mapped_column(String(40), default="planned", index=True)
+    metadata_: Mapped[dict | None] = mapped_column(JSON)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)

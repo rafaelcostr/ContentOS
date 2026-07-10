@@ -3,13 +3,12 @@ import json
 import os
 import uuid
 
-from sqlalchemy import text
-
 from contentos_database.platform_publications import (
     list_platform_publications,
     persist_platform_publications,
 )
 from contentos_database.session import get_session_factory, init_db
+from sqlalchemy import text
 
 PIPELINE_ID = uuid.UUID("2ddbfa11-a846-48c0-bc6f-647f65ead560")
 PROJECT_ID = uuid.UUID("ca8d7510-2fb4-407f-a92c-b402d4e6ae78")

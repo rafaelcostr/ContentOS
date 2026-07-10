@@ -264,7 +264,19 @@ class WorkflowEngine:
 
         pub = output_data.get("publication", {})
         payload = await self._build_payload(pipeline, "publisher")
+        render_ref = payload.get("render_ref") or {}
+        thumb_ref = payload.get("thumb_ref") or {}
         duration = payload.get("duration_seconds")
+        width = int(payload.get("width") or 1080)
+        height = int(payload.get("height") or 1920)
+        fps = int(payload.get("fps") or 60)
+
+        def asset_id_from(ref: dict) -> UUID | None:
+            try:
+                return UUID(str(ref.get("id"))) if ref.get("id") else None
+            except (TypeError, ValueError):
+                return None
+
         video = Video(
             project_id=pipeline.project_id,
             pipeline_id=pipeline.id,
@@ -272,10 +284,12 @@ class WorkflowEngine:
             description=pub.get("description"),
             status=pub.get("status", "ready"),
             hashtags=pub.get("hashtags"),
-            width=1080,
-            height=1920,
-            fps=60,
+            width=width,
+            height=height,
+            fps=fps,
             duration_seconds=duration,
+            render_asset_id=asset_id_from(render_ref),
+            thumb_asset_id=asset_id_from(thumb_ref),
         )
         platforms = pub.get("platforms") or output_data.get("platform_publications")
         if platforms:

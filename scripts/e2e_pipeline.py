@@ -246,6 +246,27 @@ async def main() -> int:
                 print("\nProviders not ready — run: python scripts/wait_for_services.py", file=sys.stderr)
                 return 1
 
+            if WORKFLOW_TEMPLATE in ("factory-full", "v5-media-autopilot", "v2-dynamic"):
+                cs = await request_with_retry(
+                    client,
+                    "GET",
+                    f"{GATEWAY}/api/v1/content-sources/health",
+                    headers=headers,
+                )
+                if cs.status_code == 200:
+                    for src in cs.json().get("sources", []):
+                        icon = "OK" if src.get("healthy") else "FAIL"
+                        print(f"  {icon} content-source/{src.get('source_id')}: {src.get('message', '')}")
+                    if not any(
+                        s.get("source_id") in ("pexels", "pixabay") and s.get("healthy")
+                        for s in cs.json().get("sources", [])
+                    ):
+                        print(
+                            "\nWARN: No healthy Pexels/Pixabay — pipeline may use placeholders. "
+                            "Set PEXELS_API_KEY / PIXABAY_API_KEY in .env and rebuild workers.",
+                            file=sys.stderr,
+                        )
+
             # 3. Project
             project = await request_with_retry(
                 client,

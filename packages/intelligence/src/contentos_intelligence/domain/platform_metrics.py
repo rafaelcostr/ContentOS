@@ -19,6 +19,8 @@ class PlatformMediaMetrics:
     engagement_rate: float | None = None
     published_at: str | None = None
     url: str | None = None
+    media_kind: str | None = None
+    duration_seconds: int | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -33,6 +35,8 @@ class PlatformMediaMetrics:
             "engagement_rate": self.engagement_rate,
             "published_at": self.published_at,
             "url": self.url,
+            "media_kind": self.media_kind,
+            "duration_seconds": self.duration_seconds,
         }
 
     @classmethod
@@ -49,6 +53,8 @@ class PlatformMediaMetrics:
             engagement_rate=data.get("engagement_rate"),
             published_at=data.get("published_at"),
             url=data.get("url"),
+            media_kind=data.get("media_kind"),
+            duration_seconds=data.get("duration_seconds"),
         )
 
 

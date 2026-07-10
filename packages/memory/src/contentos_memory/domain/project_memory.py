@@ -4,6 +4,7 @@ from dataclasses import dataclass, field
 from typing import Any
 from uuid import UUID
 
+from contentos_memory.domain.brand_identity import normalize_color_palette, normalize_string_list
 from contentos_memory.domain.dna_v2 import (
     CONTENT_ANGLE_LABELS,
     normalize_brand_keywords,
@@ -39,6 +40,46 @@ class ProjectMemoryData:
     content_angle: str = ""
     brand_keywords: list[str] = field(default_factory=list)
     editing_preferences: dict = field(default_factory=dict)
+    # Growth OS Fase 5 — Brand Intelligence
+    mission: str = ""
+    objectives: list[str] = field(default_factory=list)
+    values: list[str] = field(default_factory=list)
+    target_audience: str = ""
+    editorial_rules: list[str] = field(default_factory=list)
+    color_palette: dict = field(default_factory=dict)
+
+    def format_brand_context(self) -> str:
+        """Brand identity block for {{brand_context}} in prompts."""
+        parts: list[str] = []
+        if self.mission:
+            parts.append(f"Missão: {self.mission}")
+        if self.objectives:
+            parts.append(f"Objetivos: {', '.join(self.objectives[:8])}")
+        elif self.goal:
+            parts.append(f"Objetivo: {self.goal}")
+        if self.values:
+            parts.append(f"Valores: {', '.join(self.values[:8])}")
+        if self.target_audience:
+            parts.append(f"Público-alvo: {self.target_audience}")
+        if self.tone:
+            parts.append(f"Tom de voz: {self.tone}")
+        if self.vocabulary:
+            parts.append(f"Vocabulário: {', '.join(self.vocabulary[:12])}")
+        if self.narrator_persona:
+            parts.append(f"Persona: {self.narrator_persona}")
+        if self.color_palette:
+            palette = [f"{k}={v}" for k, v in list(self.color_palette.items())[:6]]
+            if palette:
+                parts.append(f"Paleta: {', '.join(palette)}")
+        if self.visual_style:
+            visual_bits = [f"{k}: {v}" for k, v in list(self.visual_style.items())[:6]]
+            if visual_bits:
+                parts.append(f"Identidade visual: {'; '.join(visual_bits)}")
+        if self.editorial_rules:
+            parts.append(f"Regras editoriais: {' | '.join(self.editorial_rules[:6])}")
+        if self.niche:
+            parts.append(f"Nicho: {self.niche}")
+        return ". ".join(parts) + ("." if parts else "")
 
     def format_dna_context(self) -> str:
         """DNA-only block for {{dna_context}} in prompts."""
@@ -76,10 +117,13 @@ class ProjectMemoryData:
             parts.append(f"Nicho: {self.niche}")
         if self.tone:
             parts.append(f"Tom: {self.tone}")
+        brand = self.format_brand_context()
+        if brand:
+            parts.append(brand.rstrip("."))
+        elif self.goal:
+            parts.append(f"Objetivo: {self.goal}")
         if self.hook_style:
             parts.append(f"Estilo de gancho: {self.hook_style}")
-        if self.goal:
-            parts.append(f"Objetivo: {self.goal}")
         if self.cta:
             parts.append(f"CTA padrão: {self.cta}")
         if self.avg_duration:
@@ -144,6 +188,53 @@ class ProjectMemoryData:
         if "default_voice_builtin" in patch and patch["default_voice_builtin"] is not None:
             self.default_voice_builtin = str(patch["default_voice_builtin"])
 
+    def to_brand_dict(self) -> dict[str, Any]:
+        return {
+            "mission": self.mission,
+            "objectives": list(self.objectives),
+            "values": list(self.values),
+            "target_audience": self.target_audience,
+            "editorial_rules": list(self.editorial_rules),
+            "color_palette": dict(self.color_palette),
+            "tone": self.tone,
+            "vocabulary": list(self.vocabulary),
+            "visual_style": dict(self.visual_style),
+            "narrator_persona": self.narrator_persona,
+            "niche": self.niche,
+            "goal": self.goal,
+            "style": dict(self.style),
+            "brand_context_preview": self.format_brand_context(),
+        }
+
+    def apply_brand_patch(self, patch: dict[str, Any]) -> None:
+        """Merge partial brand identity update (PATCH semantics)."""
+        if "mission" in patch and patch["mission"] is not None:
+            self.mission = str(patch["mission"]).strip()
+        if "objectives" in patch and patch["objectives"] is not None:
+            self.objectives = normalize_string_list(patch["objectives"])
+        if "values" in patch and patch["values"] is not None:
+            self.values = normalize_string_list(patch["values"])
+        if "target_audience" in patch and patch["target_audience"] is not None:
+            self.target_audience = str(patch["target_audience"]).strip()
+        if "editorial_rules" in patch and patch["editorial_rules"] is not None:
+            self.editorial_rules = normalize_string_list(patch["editorial_rules"])
+        if "color_palette" in patch and patch["color_palette"] is not None:
+            self.color_palette = normalize_color_palette(patch["color_palette"])
+        if "tone" in patch and patch["tone"] is not None:
+            self.tone = str(patch["tone"]).strip()
+        if "vocabulary" in patch and patch["vocabulary"] is not None:
+            self.vocabulary = normalize_string_list(patch["vocabulary"])
+        if "visual_style" in patch and patch["visual_style"] is not None:
+            self.visual_style = dict(patch["visual_style"])
+        if "narrator_persona" in patch and patch["narrator_persona"] is not None:
+            self.narrator_persona = str(patch["narrator_persona"]).strip()
+        if "niche" in patch and patch["niche"] is not None:
+            self.niche = str(patch["niche"]).strip()
+        if "goal" in patch and patch["goal"] is not None:
+            self.goal = str(patch["goal"]).strip()
+        if "style" in patch and patch["style"] is not None:
+            self.style = dict(patch["style"])
+
     def to_dict(self) -> dict:
         return {
             "project_id": str(self.project_id),
@@ -158,6 +249,7 @@ class ProjectMemoryData:
             "history": self.history,
             "default_voice_builtin": self.default_voice_builtin,
             **self.to_dna_dict(),
+            **self.to_brand_dict(),
         }
 
     @classmethod
@@ -185,6 +277,12 @@ class ProjectMemoryData:
             content_angle=normalize_content_angle(data.get("content_angle")),
             brand_keywords=normalize_brand_keywords(data.get("brand_keywords")),
             editing_preferences=dict(data.get("editing_preferences") or {}),
+            mission=str(data.get("mission") or ""),
+            objectives=normalize_string_list(data.get("objectives")),
+            values=normalize_string_list(data.get("values")),
+            target_audience=str(data.get("target_audience") or ""),
+            editorial_rules=normalize_string_list(data.get("editorial_rules")),
+            color_palette=normalize_color_palette(data.get("color_palette")),
         )
 
     @classmethod

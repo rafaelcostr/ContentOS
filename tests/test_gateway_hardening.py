@@ -8,7 +8,8 @@ import os
 import pytest
 from httpx import ASGITransport, AsyncClient
 
-os.environ.setdefault("JWT_SECRET", "test-secret-hardening")
+os.environ["DEBUG"] = "true"
+os.environ["JWT_SECRET"] = "test-secret-hardening-32-characters"
 os.environ.setdefault("GATEWAY_RATE_LIMIT_ENABLED", "true")
 os.environ.setdefault("GATEWAY_RATE_LIMIT_PER_MINUTE", "5")
 os.environ.setdefault(
@@ -16,6 +17,7 @@ os.environ.setdefault(
     "postgresql+asyncpg://contentos:contentos_secret@localhost:5432/contentos",
 )
 
+from contentos_gateway.config import Settings  # noqa: E402
 from contentos_gateway.main import app  # noqa: E402
 from contentos_gateway.middleware.hardening import gateway_request_timeout_seconds  # noqa: E402
 from contentos_gateway.services.gateway_rate_limiter import (  # noqa: E402
@@ -82,6 +84,7 @@ def test_gateway_rate_limiter_in_memory(monkeypatch):
 
     assert asyncio.run(_run()) is False
 
+
 def test_loadtest_scripts_exist():
     from pathlib import Path
 
@@ -94,6 +97,12 @@ def test_gateway_timeout_default():
     assert gateway_request_timeout_seconds() >= 5.0
 
 
-def test_gateway_timeout_default():
-    assert gateway_request_timeout_seconds() >= 5.0
+def test_production_rejects_default_jwt_secret():
+    with pytest.raises(ValueError, match="JWT_SECRET"):
+        Settings(debug=False, jwt_secret="change-me")
+
+
+def test_production_rejects_wildcard_cors():
+    with pytest.raises(ValueError, match="CORS_ORIGINS"):
+        Settings(debug=False, jwt_secret="x" * 32, cors_origins="*")
 

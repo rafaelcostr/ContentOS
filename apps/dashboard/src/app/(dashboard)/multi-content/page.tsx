@@ -171,7 +171,7 @@ export default function MultiContentPage() {
                 Crop {v.crop_spec.width}×{v.crop_spec.height} · max {v.crop_spec.max_duration_seconds}s ·{" "}
                 {v.crop_spec.safe_zone}
               </p>
-              {v.data?.ready_to_publish && (
+              {v.data?.ready_to_publish === true && (
                 <p className="mt-1 text-xs text-green-600">Pronto para publicar (render_ref presente)</p>
               )}
             </div>

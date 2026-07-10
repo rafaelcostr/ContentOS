@@ -1,6 +1,6 @@
 from functools import lru_cache
 
-from pydantic import field_validator
+from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -31,6 +31,16 @@ class Settings(BaseSettings):
     @property
     def cors_origins_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
+
+    @model_validator(mode="after")
+    def validate_production_security(self):
+        if self.debug:
+            return self
+        if not self.jwt_secret.strip() or self.jwt_secret.startswith("change-me") or len(self.jwt_secret) < 32:
+            raise ValueError("JWT_SECRET must be configured with at least 32 characters when DEBUG=false")
+        if "*" in self.cors_origins_list:
+            raise ValueError("CORS_ORIGINS cannot contain '*' when DEBUG=false and credentials are enabled")
+        return self
 
 
 @lru_cache

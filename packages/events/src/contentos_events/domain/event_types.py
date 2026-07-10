@@ -66,6 +66,7 @@ DIRECTOR_DECIDED = "director.decided"
 DIRECTOR_RETRY_STARTED = "director_retry.started"
 DIRECTOR_RETRY_EXHAUSTED = "director_retry.exhausted"
 CREATIVE_MEMORY_MERGED = "creative_memory.merged"
+CHANNEL_ANALYZED = "channel.analyzed"
 
 ALL_TYPES = [
     PIPELINE_CREATED,
@@ -120,6 +121,7 @@ ALL_TYPES = [
     DIRECTOR_RETRY_STARTED,
     DIRECTOR_RETRY_EXHAUSTED,
     CREATIVE_MEMORY_MERGED,
+    CHANNEL_ANALYZED,
 ]
 
 # Completed-step → domain event (emitted by BaseAgentHandler on callback)

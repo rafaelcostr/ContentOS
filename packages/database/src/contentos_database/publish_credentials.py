@@ -8,7 +8,7 @@ from uuid import UUID
 from contentos_database.channel_credentials import fetch_project_credentials, merge_credentials
 from contentos_database.models import Channel
 from contentos_database.oauth_tokens import refresh_channel_token_if_needed
-from contentos_database.session import _session_factory, init_db
+from contentos_database.session import get_session_factory, init_db
 from sqlalchemy import select
 
 
@@ -22,12 +22,14 @@ async def load_merged_project_credentials(
         return env_credentials
 
     try:
-        if _session_factory is None:
+        session_factory = get_session_factory()
+        if session_factory is None:
             init_db(database_url)
-        if _session_factory is None:
+        session_factory = get_session_factory()
+        if session_factory is None:
             return env_credentials
 
-        async with _session_factory() as db:
+        async with session_factory() as db:
             result = await db.execute(
                 select(Channel)
                 .where(Channel.project_id == project_id, Channel.is_active.is_(True))

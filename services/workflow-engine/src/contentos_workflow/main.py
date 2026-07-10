@@ -27,10 +27,11 @@ async def lifespan(app: FastAPI):
     instrument_fastapi(app)
     init_db(DATABASE_URL)
     await create_tables()
-    from contentos_database.session import _session_factory
+    from contentos_database.session import get_session_factory
 
-    if _session_factory:
-        async with _session_factory() as db:
+    session_factory = get_session_factory()
+    if session_factory:
+        async with session_factory() as db:
             await ensure_workflow_templates(db)
             await db.commit()
     yield

@@ -36,6 +36,14 @@ except ImportError:
 
 
 try:
+    from contentos_growth.application.channel_memory_service import get_channel_memory_service
+except ImportError:
+
+    def get_channel_memory_service():  # type: ignore[misc]
+        return None
+
+
+try:
     from contentos_models import get_model_manager
 except ImportError:
 
@@ -209,10 +217,13 @@ class BaseAgentHandler(ABC):
             for key in (
                 "memory_context",
                 "dna_context",
+                "brand_context",
                 "niche",
                 "narrator_persona",
                 "pace",
                 "cta_style",
+                "mission",
+                "target_audience",
                 "specialist_context",
                 "specialist_id",
             ):
@@ -223,10 +234,22 @@ class BaseAgentHandler(ABC):
                 vars_map["memory_context"] = ""
             if not vars_map.get("dna_context"):
                 vars_map["dna_context"] = ""
+            if not vars_map.get("brand_context"):
+                vars_map["brand_context"] = ""
 
+        channel_memory_svc = get_channel_memory_service()
         ti = getattr(self, "_last_task_input", None)
         if ti and isinstance(getattr(ti, "payload", None), dict):
             payload = ti.payload
+            channel_id_raw = payload.get("channel_id")
+            if channel_memory_svc and channel_id_raw:
+                try:
+                    channel_vars = channel_memory_svc.prompt_variables(UUID(str(channel_id_raw)))
+                    for key in ("channel_context", "channel_top_hooks", "channel_top_hashtags"):
+                        if not vars_map.get(key) and channel_vars.get(key):
+                            vars_map[key] = channel_vars[key]
+                except (ValueError, TypeError):
+                    pass
             for key in ("specialist_context", "specialist_id", "niche", "specialist_prompt_pack"):
                 if payload.get(key) and not vars_map.get(key):
                     vars_map[key] = str(payload[key])
@@ -240,6 +263,8 @@ class BaseAgentHandler(ABC):
                 base_memory = vars_map.get("memory_context", "")
                 if creative_block not in base_memory:
                     vars_map["memory_context"] = f"{base_memory}\n\n[Creative Memory]\n{creative_block}".strip()
+        elif not vars_map.get("channel_context"):
+            vars_map["channel_context"] = ""
 
         return service.render(prompt_id, vars_map)
 

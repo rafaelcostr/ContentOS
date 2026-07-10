@@ -83,6 +83,19 @@ def test_evaluate_publish_gate_blocks_on_quality():
     assert "quality" in gate["block_reasons"]
 
 
+def test_evaluate_publish_gate_blocks_on_thumbnail():
+    gate = evaluate_publish_gate(
+        {
+            "quality_passed": True,
+            "video_review_passed": True,
+            "retention_passed": True,
+            "thumbnail_qa_passed": False,
+        }
+    )
+    assert gate["publishable"] is False
+    assert "thumbnail" in gate["block_reasons"]
+
+
 def test_should_block_live_publish_only_in_live_mode(monkeypatch):
     monkeypatch.setenv("PUBLISH_REQUIRE_QA", "true")
     payload = {"quality_passed": False, "video_review_passed": True}

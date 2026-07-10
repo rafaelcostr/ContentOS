@@ -13,6 +13,7 @@ from contentos_gateway.api.routes import (
     auth,
     billing,
     cache,
+    channel_memory,
     channels,
     comment_analyzer,
     community,
@@ -25,6 +26,7 @@ from contentos_gateway.api.routes import (
     executive,
     factory,
     graph,
+    growth,
     health,
     jobs,
     knowledge,
@@ -41,7 +43,9 @@ from contentos_gateway.api.routes import (
     performance_learning,
     pipelines,
     platform_analytics,
+    platform_channel,
     platform_plugins,
+    project_brand,
     project_dna,
     projects,
     prometheus,
@@ -59,6 +63,7 @@ from contentos_gateway.api.routes import (
     voice_library,
     voice_profiles,
     workflow_builder,
+    youtube_channel,
 )
 from contentos_gateway.api.websocket import router as ws_router
 from contentos_gateway.config import settings
@@ -80,11 +85,12 @@ async def _scheduler_loop() -> None:
     while True:
         await asyncio.sleep(interval)
         try:
-            from contentos_database.session import _session_factory
+            from contentos_database.session import get_session_factory
 
-            if not _session_factory:
+            session_factory = get_session_factory()
+            if not session_factory:
                 continue
-            async with _session_factory() as db:
+            async with session_factory() as db:
                 await run_due_schedules(db, settings.workflow_engine_url)
                 await db.commit()
         except Exception:
@@ -107,11 +113,12 @@ async def lifespan(app: FastAPI):
         pass
     scheduler_task: asyncio.Task | None = None
     try:
-        from contentos_database.session import _session_factory
+        from contentos_database.session import get_session_factory
         from contentos_models import get_model_manager
 
-        if _session_factory:
-            async with _session_factory() as db:
+        session_factory = get_session_factory()
+        if session_factory:
+            async with session_factory() as db:
                 await get_model_manager().ensure_defaults(db)
                 from contentos_database.workflow_seed import ensure_workflow_templates
 
@@ -165,6 +172,7 @@ def create_app() -> FastAPI:
     app.include_router(schedules.router, prefix=prefix)
     app.include_router(memory.router, prefix=prefix)
     app.include_router(project_dna.router, prefix=prefix)
+    app.include_router(project_brand.router, prefix=prefix)
     app.include_router(knowledge.router, prefix=prefix)
     app.include_router(reuse.router, prefix=prefix)
     app.include_router(viral.router, prefix=prefix)
@@ -181,6 +189,7 @@ def create_app() -> FastAPI:
     app.include_router(performance_learning.router, prefix=prefix)
     app.include_router(trend.router, prefix=prefix)
     app.include_router(graph.router, prefix=prefix)
+    app.include_router(growth.router, prefix=prefix)
     app.include_router(executive.router, prefix=prefix)
     app.include_router(ops.router, prefix=prefix)
     app.include_router(pipelines.router, prefix=prefix)
@@ -205,6 +214,9 @@ def create_app() -> FastAPI:
     app.include_router(marketplace.router, prefix=prefix)
     app.include_router(workflow_builder.router, prefix=prefix)
     app.include_router(channels.router, prefix=prefix)
+    app.include_router(channel_memory.router, prefix=prefix)
+    app.include_router(youtube_channel.router, prefix=prefix)
+    app.include_router(platform_channel.router, prefix=prefix)
     app.include_router(comment_analyzer.router, prefix=prefix)
     app.include_router(community.router, prefix=prefix)
     app.include_router(oauth.router, prefix=prefix)

@@ -10,6 +10,8 @@ from contentos_shared.enums import AssetCategory, JobStatus
 from contentos_shared.providers.image.local_thumbnail import LocalThumbnailProvider
 from contentos_shared.schemas.agent import AgentTaskInput, AgentTaskOutput
 from contentos_shared.schemas.asset import AssetMeta
+from contentos_shared.thumbnail_qa import validate_thumbnail
+from contentos_storage.application.asset_pipeline_service import AssetPipelineService
 
 
 def _update_video_thumb_sync(pipeline_id, asset_id: uuid.UUID) -> None:
@@ -132,7 +134,9 @@ class ThumbnailAgentHandler(PipelineAwareHandler):
         )
         logs.append(f"Cost tracked ({duration_ms}ms)")
 
-        ref = await self.get_asset_manager().store(
+        thumb_qa = validate_thumbnail(image_bytes or b"")
+        asset_manager = self.get_asset_manager()
+        persisted = await AssetPipelineService(asset_manager).store_and_persist(
             AssetCategory.THUMBS,
             image_bytes,
             AssetMeta(
@@ -141,7 +145,20 @@ class ThumbnailAgentHandler(PipelineAwareHandler):
                 filename="thumbnail.jpg",
                 content_type="image/jpeg",
             ),
+            extra_tags=["thumbnail", f"pipeline:{task_input.pipeline_id}"],
+            metadata={
+                "topic": topic,
+                "title": title,
+                "provider": image_provider_name,
+                "width": thumb_qa.width,
+                "height": thumb_qa.height,
+            },
         )
+        ref = persisted.ref
+        if thumb_qa.passed:
+            logs.append(f"Thumbnail QA passed ({thumb_qa.width}x{thumb_qa.height})")
+        else:
+            logs.append("Thumbnail QA warnings: " + "; ".join(thumb_qa.errors))
         _update_video_thumb_sync(task_input.pipeline_id, ref.id)
         logs.append(f"Stored thumb {ref.key}")
 
@@ -149,6 +166,10 @@ class ThumbnailAgentHandler(PipelineAwareHandler):
             job_id=task_input.job_id,
             status=JobStatus.COMPLETED.value,
             artifacts=[ref],
-            data={"thumb_ref": {"id": str(ref.id), "key": ref.key, "bucket": ref.bucket}, "concept": concept},
+            data={
+                "thumb_ref": {"id": str(ref.id), "key": ref.key, "bucket": ref.bucket},
+                "concept": concept,
+                **thumb_qa.to_dict(),
+            },
             logs=logs,
         )

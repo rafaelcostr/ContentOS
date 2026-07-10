@@ -36,11 +36,18 @@ class VideoResponse(BaseModel):
 
     id: UUID
     project_id: UUID
+    pipeline_id: UUID | None = None
     title: str
+    description: str | None = None
     status: str
     duration_seconds: float | None
     width: int
     height: int
+    fps: int
+    render_asset_id: UUID | None = None
+    thumb_asset_id: UUID | None = None
+    hashtags: list | None = None
+    platform_variants: dict | None = None
     created_at: datetime
 
 

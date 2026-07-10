@@ -52,6 +52,8 @@ class PlatformMediaMetricsResponse(BaseModel):
     engagement_rate: float | None = None
     published_at: str | None = None
     url: str | None = None
+    media_kind: str | None = None
+    duration_seconds: int | None = None
 
 
 class PlatformAnalyticsReportResponse(BaseModel):

@@ -43,14 +43,18 @@ async def run_due_schedules(db: AsyncSession, workflow_engine_url: str) -> list[
     async with httpx.AsyncClient(timeout=120.0) as client:
         for schedule in result.scalars().all():
             topic = render_topic_template(schedule.topic, when=now)
+            payload: dict = {
+                "project_id": str(schedule.project_id),
+                "topic": topic,
+                "workflow_name": schedule.workflow_name,
+                "auto_start": True,
+            }
+            if schedule.context_json:
+                payload["context_json"] = schedule.context_json
             try:
                 resp = await client.post(
                     f"{workflow_engine_url.rstrip('/')}/internal/pipelines",
-                    json={
-                        "project_id": str(schedule.project_id),
-                        "topic": topic,
-                        "workflow_name": schedule.workflow_name,
-                    },
+                    json=payload,
                 )
             except httpx.HTTPError as exc:
                 schedule.last_error = str(exc)[:500]

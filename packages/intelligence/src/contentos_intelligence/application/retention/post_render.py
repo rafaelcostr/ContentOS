@@ -32,7 +32,7 @@ def enrich_payload_for_post_render(payload: dict[str, Any]) -> dict[str, Any]:
     if quality_passed is False:
         enriched.setdefault("_retention_penalty_reasons", []).append("quality_failed")
     missing_clips = int(diagnostics.get("missing_clip_count") or 0)
-    if missing_clips:
+    if missing_clips and not enriched.get("quality_passed"):
         enriched.setdefault("_retention_penalty_reasons", []).append(f"missing_clips:{missing_clips}")
     if diagnostics.get("used_silent_audio"):
         enriched.setdefault("_retention_penalty_reasons", []).append("silent_audio")
@@ -73,9 +73,9 @@ def apply_post_render_penalties(baseline: float, payload: dict[str, Any]) -> flo
         if str(reason).startswith("missing_clips:"):
             try:
                 count = int(str(reason).split(":", 1)[1])
-                score -= min(20.0, count * 4.0)
+                score -= min(12.0, count * 2.0)
             except ValueError:
-                score -= 4.0
+                score -= 2.0
         elif reason == "silent_audio":
             score -= 6.0
     return max(0.0, min(100.0, score))

@@ -16,6 +16,8 @@ COPY packages/content-sources /app/packages/content-sources
 COPY packages/database /app/packages/database
 COPY packages/storage /app/packages/storage
 COPY packages/intelligence /app/packages/intelligence
+COPY packages/growth /app/packages/growth
+COPY packages/autopilot /app/packages/autopilot
 COPY plugins /app/plugins
 COPY apps/backend /app/apps/backend
 
@@ -34,10 +36,12 @@ RUN pip install --no-cache-dir \
     -e /app/packages/database \
     -e /app/packages/storage \
     -e /app/packages/intelligence[postgres] \
+    -e /app/packages/growth \
+    -e /app/packages/autopilot \
     fastapi uvicorn[standard] python-jose[cryptography] bcrypt httpx pydantic-settings email-validator python-multipart alembic psutil redis celery stripe croniter prometheus-client \
     opentelemetry-api opentelemetry-sdk opentelemetry-exporter-otlp-proto-grpc opentelemetry-instrumentation-fastapi opentelemetry-instrumentation-httpx
 
-ENV PYTHONPATH=/app/apps/backend/src:/app/packages/shared/src:/app/packages/ai-client/src:/app/packages/prompts/src:/app/packages/models/src:/app/packages/memory/src:/app/packages/cache/src:/app/packages/cost/src:/app/packages/events/src:/app/packages/analytics-ai/src:/app/packages/plugins-core/src:/app/packages/content-sources/src:/app/packages/database/src:/app/packages/storage/src:/app/packages/intelligence/src
+ENV PYTHONPATH=/app/apps/backend/src:/app/packages/shared/src:/app/packages/ai-client/src:/app/packages/prompts/src:/app/packages/models/src:/app/packages/memory/src:/app/packages/cache/src:/app/packages/cost/src:/app/packages/events/src:/app/packages/analytics-ai/src:/app/packages/plugins-core/src:/app/packages/content-sources/src:/app/packages/database/src:/app/packages/storage/src:/app/packages/intelligence/src:/app/packages/growth/src:/app/packages/autopilot/src
 ENV PLUGINS_ROOT=/app/plugins
 ENV PROMPTS_DIR=/app/packages/prompts/prompts
 ENV PROMPTS_OVERRIDE_DIR=/data/prompts

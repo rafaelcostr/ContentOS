@@ -2,6 +2,7 @@
 
 from uuid import uuid4
 
+import pytest
 from contentos_agents.handlers.video_review import _heuristic_review, normalize_video_review
 from contentos_events.domain.event import DomainEvent
 from contentos_events.domain.event_types import STEP_TO_DOMAIN_EVENT, VIDEO_REVIEW_FINISHED
@@ -61,3 +62,61 @@ def test_video_review_domain_event():
         payload={"video_score": 8},
     )
     assert event.event_type == VIDEO_REVIEW_FINISHED
+
+
+@pytest.mark.asyncio
+async def test_video_review_job_completes_when_score_fails(monkeypatch):
+    """Job status is COMPLETED even when review fails — engine handles retry (ADR-006)."""
+    from contentos_agents.handlers.video_review import VideoReviewAgentHandler
+    from contentos_shared.enums import JobStatus
+    from contentos_shared.schemas.agent import AgentTaskInput
+
+    monkeypatch.setenv("VIDEO_REVIEW_MIN_SCORE", "8")
+
+    class _FakeAM:
+        async def store(self, *args, **kwargs):
+            return type("Ref", (), {"id": uuid4()})()
+
+    class _FakeHandler(VideoReviewAgentHandler):
+        def get_asset_manager(self):
+            return _FakeAM()
+
+        async def chat_json_with_cache(self, *args, **kwargs):
+            return (
+                {
+                    "score": 4,
+                    "passed": False,
+                    "dimensions": {"hook": 4, "pacing": 4, "emotion": 4, "cta": 4, "technical": 4},
+                    "suggestions": ["Melhorar hook"],
+                    "summary": "Abaixo do mínimo",
+                },
+                False,
+                "cache-key",
+            )
+
+        def render_prompt(self, *args, **kwargs):
+            class _Prompt:
+                version = 1
+                system = ""
+                user = ""
+
+            return _Prompt()
+
+    handler = _FakeHandler()
+    task = AgentTaskInput(
+        job_id=uuid4(),
+        project_id=uuid4(),
+        pipeline_id=uuid4(),
+        step="video_review",
+        payload={
+            "topic": "GTA 6",
+            "script": {"title": "GTA 6"},
+            "emotion": {"overall": 5, "curiosity": 5, "retention": 5, "emotion": 5, "impact": 5},
+            "quality_passed": True,
+            "quality_score": 8,
+        },
+    )
+    output = await handler.execute(task)
+    assert output.status == JobStatus.COMPLETED.value
+    assert output.data["video_review_passed"] is False
+    assert output.data["video_score"] == 4

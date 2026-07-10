@@ -122,8 +122,8 @@ def subtitle_and_progress_filter(
         srt = str(subtitle_path).replace("\\", "/").replace(":", "\\:")
         filters.append(
             f"subtitles='{srt}':force_style="
-            f"'FontSize=26,PrimaryColour=&HFFFFFF,OutlineColour=&H000000,"
-            f"Outline=2,Bold=1,Alignment=2,MarginV=120'"
+            f"'FontSize=18,PrimaryColour=&HFFFFFF,OutlineColour=&H000000,"
+            f"Outline=2,Bold=1,Alignment=2,MarginV=170'"
         )
 
     # Progress bar: white fill grows left-to-right over total duration
@@ -157,14 +157,14 @@ def build_audio_mix_filter(
             f"[2:a]aresample=44100,aformat=channel_layouts=mono,volume={vol}[bg];"
             f"[bg][voicekey]sidechaincompress=threshold={ducking_threshold}:"
             f"ratio={ducking_ratio}:attack=80:release=500[bgduck];"
-            f"[voicemix][bgduck]amix=inputs=2:duration=first:dropout_transition=2[aout]"
+            f"[voicemix][bgduck]amix=inputs=2:duration=longest:dropout_transition=2[aout]"
         )
     return (
         f"[1:a]aresample=44100,aformat=channel_layouts=mono,"
         f"loudnorm=I=-16:TP=-1.5:LRA=11:linear=true[voice];"
         f"[2:a]aresample=44100,aformat=channel_layouts=mono,volume={vol},"
         f"afade=t=in:st=0:d=1,afade=t=out:st=0:d=0[bg];"
-        f"[voice][bg]amix=inputs=2:duration=first:dropout_transition=2[aout]"
+        f"[voice][bg]amix=inputs=2:duration=longest:dropout_transition=2[aout]"
     )
 
 

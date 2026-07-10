@@ -49,6 +49,20 @@ def quality_min_bitrate_bps() -> int:
         return 1_000_000
 
 
+def quality_target_lufs() -> float:
+    try:
+        return float(os.getenv("QUALITY_TARGET_LUFS", "-16"))
+    except ValueError:
+        return -16.0
+
+
+def quality_lufs_tolerance() -> float:
+    try:
+        return max(0.5, float(os.getenv("QUALITY_LUFS_TOLERANCE", "3")))
+    except ValueError:
+        return 3.0
+
+
 def _dim(name: str, passed: bool, *, detail: str = "", partial_score: int | None = None) -> QualityDimension:
     if partial_score is not None:
         score = max(0, min(10, partial_score))
@@ -66,13 +80,27 @@ def score_framerate(fps: float) -> QualityDimension:
 
 
 def score_duration(duration: float) -> QualityDimension:
-    if 15 <= duration <= 60:
+    if 30 <= duration <= 60:
         return _dim("duration", True, detail=f"{duration:.1f}s")
-    if 0 < duration < 15:
+    if 15 <= duration < 30:
         return _dim("duration", False, detail=f"{duration:.1f}s (short)", partial_score=6)
+    if 0 < duration < 15:
+        return _dim("duration", False, detail=f"{duration:.1f}s (too short)", partial_score=3)
     if 60 < duration <= 90:
         return _dim("duration", False, detail=f"{duration:.1f}s (long)", partial_score=4)
     return _dim("duration", False, detail=f"{duration:.1f}s", partial_score=0)
+
+
+def score_loudness(integrated_lufs: float) -> QualityDimension:
+    target = quality_target_lufs()
+    tolerance = quality_lufs_tolerance()
+    delta = abs(integrated_lufs - target)
+    detail = f"{integrated_lufs:.1f} LUFS (target {target:.0f}±{tolerance:.0f})"
+    if delta <= tolerance:
+        return _dim("loudness", True, detail=detail)
+    if delta <= tolerance * 2:
+        return _dim("loudness", False, detail=detail, partial_score=5)
+    return _dim("loudness", False, detail=detail, partial_score=0)
 
 
 def build_quality_report(
@@ -94,6 +122,7 @@ def build_quality_report(
     has_narration_audio: bool | None = None,
     subtitle_sync_ok: bool | None = None,
     bit_rate: int | None = None,
+    integrated_lufs: float | None = None,
     extra_errors: list[str] | None = None,
 ) -> QualityReport:
     """Aggregate technical checks into a 0–10 score and pass/fail."""
@@ -182,6 +211,12 @@ def build_quality_report(
         if not bitrate_ok:
             errors.append(f"Bitrate below minimum: {bit_rate} bps")
 
+    if integrated_lufs is not None:
+        # Loudness is a soft quality signal, not a hard gate: single-pass ffmpeg
+        # loudnorm cannot hit the exact target and platforms re-normalize on upload,
+        # so it lowers the score but never blocks (avoids editor↔quality retry loops).
+        dims.append(score_loudness(integrated_lufs))
+
     if has_real_clips is not None:
         dims.append(
             _dim(
@@ -226,6 +261,8 @@ def build_quality_report(
         suggestions.append("Revisar timestamps SRT vs segmentos de narração")
     if dim_map.get("bitrate") and not dim_map["bitrate"].passed:
         suggestions.append("Aumentar bitrate do render (CRF/preset no editor)")
+    if dim_map.get("loudness") and not dim_map["loudness"].passed:
+        suggestions.append("Normalizar loudness do áudio (target -16 LUFS no editor)")
     if dim_map.get("real_clips") and not dim_map["real_clips"].passed:
         suggestions.append("Substituir cenas placeholder por clipes reais")
     if dim_map.get("narration") and not dim_map["narration"].passed:

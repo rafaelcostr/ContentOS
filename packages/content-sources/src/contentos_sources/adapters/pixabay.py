@@ -132,9 +132,24 @@ class PixabaySource:
 
 
 def _best_pixabay_url(videos: dict) -> str | None:
+    ranked: list[tuple[float, str]] = []
+    quality_rank = {"large": 4, "medium": 3, "small": 2, "tiny": 1}
     for quality in ("large", "medium", "small", "tiny"):
         entry = videos.get(quality) or {}
         url = entry.get("url")
-        if url:
-            return str(url)
-    return None
+        if not url:
+            continue
+        width = float(entry.get("width") or 0)
+        height = float(entry.get("height") or 0)
+        # Prefer portrait for 9:16 vertical shorts.
+        if height > width:
+            orientation_bonus = 2.0
+        elif height == width:
+            orientation_bonus = 0.5
+        else:
+            orientation_bonus = 0.0
+        ranked.append((orientation_bonus + quality_rank.get(quality, 0) * 0.1, str(url)))
+    if not ranked:
+        return None
+    ranked.sort(key=lambda item: item[0], reverse=True)
+    return ranked[0][1]

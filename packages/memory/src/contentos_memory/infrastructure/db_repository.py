@@ -35,6 +35,12 @@ def _row_to_data(row) -> ProjectMemoryData:
         content_angle=getattr(row, "content_angle", None) or "",
         brand_keywords=list(getattr(row, "brand_keywords", None) or []),
         editing_preferences=dict(getattr(row, "editing_preferences", None) or {}),
+        mission=getattr(row, "mission", None) or "",
+        objectives=list(getattr(row, "objectives", None) or []),
+        values=list(getattr(row, "values", None) or []),
+        target_audience=getattr(row, "target_audience", None) or "",
+        editorial_rules=list(getattr(row, "editorial_rules", None) or []),
+        color_palette=dict(getattr(row, "color_palette", None) or {}),
     )
 
 
@@ -60,6 +66,12 @@ def _apply_data_to_row(row, data: ProjectMemoryData, *, now: datetime) -> None:
     row.content_angle = data.content_angle or None
     row.brand_keywords = data.brand_keywords or None
     row.editing_preferences = data.editing_preferences or None
+    row.mission = data.mission or None
+    row.objectives = data.objectives or None
+    row.values = data.values or None
+    row.target_audience = data.target_audience or None
+    row.editorial_rules = data.editorial_rules or None
+    row.color_palette = data.color_palette or None
     row.updated_at = now
 
 
@@ -89,6 +101,12 @@ def _new_row(data: ProjectMemoryData, *, now: datetime):
         content_angle=data.content_angle or None,
         brand_keywords=data.brand_keywords or None,
         editing_preferences=data.editing_preferences or None,
+        mission=data.mission or None,
+        objectives=data.objectives or None,
+        values=data.values or None,
+        target_audience=data.target_audience or None,
+        editorial_rules=data.editorial_rules or None,
+        color_palette=data.color_palette or None,
         updated_at=now,
     )
 

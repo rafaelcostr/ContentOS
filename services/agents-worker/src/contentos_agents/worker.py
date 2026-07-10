@@ -6,9 +6,12 @@ from contentos_agents.handlers.asset_collector import AssetCollectorAgentHandler
 from contentos_agents.handlers.asset_index import AssetIndexAgentHandler
 from contentos_agents.handlers.asset_search import AssetSearchAgentHandler
 from contentos_agents.handlers.auto_retry import AutoRetryAgentHandler
+from contentos_agents.handlers.channel_analyzer import ChannelAnalyzerAgentHandler
 from contentos_agents.handlers.clip_research import ClipResearchAgentHandler
+from contentos_agents.handlers.competitor_analyzer import CompetitorAnalyzerAgentHandler
 from contentos_agents.handlers.content_intelligence import ContentIntelligenceAgentHandler
 from contentos_agents.handlers.content_score import ContentScoreAgentHandler
+from contentos_agents.handlers.content_strategist import ContentStrategistAgentHandler
 from contentos_agents.handlers.creative_memory import CreativeMemoryAgentHandler
 from contentos_agents.handlers.editor import EditorAgentHandler
 from contentos_agents.handlers.emotion import EmotionAgentHandler
@@ -82,6 +85,9 @@ HANDLERS = {
     "analytics": AnalyticsAgentHandler(),
     "learning": LearningAgentHandler(),
     "knowledge_base": KnowledgeBaseAgentHandler(),
+    "channel_analyzer": ChannelAnalyzerAgentHandler(),
+    "competitor_analyzer": CompetitorAnalyzerAgentHandler(),
+    "content_strategist": ContentStrategistAgentHandler(),
 }
 
 ALL_QUEUES = ",".join(f"contentos.{step}" for step in HANDLERS)

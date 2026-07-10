@@ -89,6 +89,15 @@ def _fresh_manager() -> SourceManager:
     return mgr
 
 
+def _mock_public_dns(monkeypatch) -> None:
+    def fake_getaddrinfo(host, port, *args, **kwargs):
+        if host == "cdn.example":
+            return [(None, None, None, "", ("93.184.216.34", port or 443))]
+        raise OSError(f"unexpected DNS lookup: {host}")
+
+    monkeypatch.setattr("contentos_sources.application.download_pipeline.socket.getaddrinfo", fake_getaddrinfo)
+
+
 @pytest.mark.asyncio
 async def test_pexels_search_mocked(monkeypatch):
     monkeypatch.setenv("CONTENT_SOURCES_ENABLED", "pexels")
@@ -115,6 +124,7 @@ async def test_pexels_search_mocked(monkeypatch):
 async def test_pexels_fetch_mocked(monkeypatch):
     monkeypatch.setenv("PEXELS_API_KEY", "test-key")
     monkeypatch.setenv("MEDIA_ALLOWED_LICENSES", "royalty_free")
+    _mock_public_dns(monkeypatch)
 
     def handler(request: httpx.Request) -> httpx.Response:
         url = str(request.url)
@@ -141,6 +151,7 @@ async def test_pexels_fetch_mocked(monkeypatch):
 async def test_pixabay_search_and_fetch_mocked(monkeypatch):
     monkeypatch.setenv("PIXABAY_API_KEY", "pix-key")
     monkeypatch.setenv("MEDIA_ALLOWED_LICENSES", "royalty_free")
+    _mock_public_dns(monkeypatch)
 
     def handler(request: httpx.Request) -> httpx.Response:
         url = str(request.url)
@@ -203,6 +214,18 @@ async def test_search_all_scenes_with_pexels(monkeypatch):
     rows = await mgr.search_all_scenes(scenes, uuid4(), "GTA 6")
     assert len(rows) == 1
     assert len(rows[0]["candidates"]) >= 1
+
+
+def test_pixabay_prefers_portrait_url():
+    from contentos_sources.adapters.pixabay import _best_pixabay_url
+
+    url = _best_pixabay_url(
+        {
+            "large": {"url": "https://example.com/landscape.mp4", "width": 1920, "height": 1080},
+            "medium": {"url": "https://example.com/portrait.mp4", "width": 720, "height": 1280},
+        }
+    )
+    assert url == "https://example.com/portrait.mp4"
 
 
 def test_factory_registers_pexels_pixabay():

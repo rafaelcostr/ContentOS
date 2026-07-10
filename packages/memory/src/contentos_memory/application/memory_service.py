@@ -38,13 +38,23 @@ class MemoryService:
         return {
             "memory_context": memory.format_context(),
             "dna_context": memory.format_dna_context(),
+            "brand_context": memory.format_brand_context(),
             "niche": memory.niche,
             "narrator_persona": memory.narrator_persona,
             "pace": memory.pace,
             "cta_style": memory.cta_style,
             "content_angle": memory.content_angle,
             "cinematic_preset": memory.cinematic_preset,
+            "mission": memory.mission,
+            "target_audience": memory.target_audience,
         }
+
+    async def update_brand(
+        self, db: AsyncSession, project_id: UUID, patch: dict
+    ) -> ProjectMemoryData:
+        current = await self._repo.get(db, project_id)
+        current.apply_brand_patch(patch)
+        return await self.update(db, current)
 
     async def update_dna(
         self, db: AsyncSession, project_id: UUID, patch: dict

@@ -2,6 +2,7 @@
 
 import json
 import re
+import textwrap
 import time
 
 from contentos_shared.agents.base import BaseAgentHandler
@@ -24,10 +25,43 @@ def _segments_to_srt(segments: list[dict]) -> str:
         start = seg.get("start", 0)
         end = seg.get("end", start + 2)
         text = seg.get("text", "").strip()
-        words = text.split()
-        display = " ".join(f"<b>{w}</b>" if j == len(words) // 2 else w for j, w in enumerate(words))
+        display = _format_caption_text(text)
         lines.extend([str(i), f"{_format_srt_time(start)} --> {_format_srt_time(end)}", display, ""])
     return "\n".join(lines)
+
+
+def _format_caption_text(text: str, *, max_chars: int = 44, line_width: int = 22) -> str:
+    """Format captions for vertical shorts without covering the whole frame."""
+    words = text.split()
+    if not words:
+        return ""
+
+    clipped_words: list[str] = []
+    total = 0
+    for word in words:
+        extra = len(word) + (1 if clipped_words else 0)
+        if clipped_words and total + extra > max_chars:
+            break
+        clipped_words.append(word)
+        total += extra
+
+    if len(clipped_words) < len(words) and clipped_words:
+        clipped_words[-1] = f"{clipped_words[-1].rstrip(',.!?;:')}..."
+
+    emphasis_index = len(clipped_words) // 2
+    emphasized = [
+        f"<b>{word}</b>" if index == emphasis_index else word
+        for index, word in enumerate(clipped_words)
+    ]
+    wrapped = textwrap.wrap(
+        " ".join(emphasized),
+        width=line_width,
+        max_lines=2,
+        break_long_words=False,
+        break_on_hyphens=False,
+        placeholder="...",
+    )
+    return "\n".join(wrapped)
 
 
 class SubtitleAgentHandler(BaseAgentHandler):

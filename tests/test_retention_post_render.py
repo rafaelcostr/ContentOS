@@ -50,6 +50,36 @@ def test_retention_penalized_when_quality_failed():
     assert penalized < baseline
 
 
+def test_retention_skips_missing_clip_penalty_when_quality_passed():
+    payload = enrich_payload_for_post_render(
+        {
+            "duration_seconds": 27.7,
+            "quality_passed": True,
+            "quality_score": 9,
+            "render_diagnostics": {"missing_clip_count": 6, "used_silent_audio": False},
+            "scenes": [
+                {"label": "gta_logo", "start_seconds": 0, "end_seconds": 6},
+                {"label": "community_theories", "start_seconds": 6, "end_seconds": 17},
+                {"label": "future_scenes", "start_seconds": 17, "end_seconds": 24},
+                {"label": "advanced_ai", "start_seconds": 24, "end_seconds": 27.7},
+            ],
+            "emotion": {"curiosity": 8, "retention": 7},
+            "director_plan": {
+                "segments": [
+                    {"movement": "static", "transition": "fade"},
+                    {"movement": "pan-left", "transition": "fade"},
+                    {"movement": "static", "transition": "fade"},
+                    {"movement": "static", "transition": "fade"},
+                ],
+            },
+        }
+    )
+    report = RetentionAnalyzer().analyze(payload)
+    assert report.overall_score > 0
+    assert report.completion_pct > 0
+    assert "missing_clips:" not in str(payload.get("_retention_penalty_reasons", []))
+
+
 def test_factory_full_retention_after_quality():
     from contentos_shared.enums import PipelineStep
 
@@ -91,7 +121,7 @@ async def test_persist_platform_publications(monkeypatch):
             return None
 
     monkeypatch.setenv("DATABASE_URL", "postgresql+asyncpg://x")
-    monkeypatch.setattr(mod, "_session_factory", lambda: FakeSession())
+    monkeypatch.setattr(mod, "get_session_factory", lambda: FakeSession)
 
     count = await mod.persist_platform_publications(
         uuid4(),

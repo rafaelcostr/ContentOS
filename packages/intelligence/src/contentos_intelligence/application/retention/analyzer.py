@@ -36,6 +36,10 @@ _TRANSITION_DROP: dict[str, float] = {
     "dissolve": 1.5,
 }
 
+# Max retention percentage points lost per second (heuristic curve stability).
+_MAX_DROP_PER_SECOND = 10.0
+_MIN_RETENTION_PCT = 8.0
+
 
 def _clamp_pct(value: float) -> float:
     return max(0.0, min(100.0, float(value)))
@@ -176,10 +180,12 @@ class RetentionAnalyzer:
             elif playback < 0.85:
                 decay -= 0.01
 
-            current = current - decay * 100 + boost
+            net_change = -decay * 100 + boost
+            net_change = max(net_change, -_MAX_DROP_PER_SECOND)
+            current = current + net_change
             if second <= 3:
                 current = max(current, hook_floor - second * 3.5)
-            current = _clamp_pct(current)
+            current = max(_MIN_RETENTION_PCT, _clamp_pct(current))
 
             timeline.append(
                 RetentionSecond(

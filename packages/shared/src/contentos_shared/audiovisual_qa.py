@@ -102,12 +102,15 @@ def evaluate_publish_gate(payload: dict[str, Any]) -> dict[str, Any]:
         block_reasons.append("video_review")
     if not retention_passed:
         block_reasons.append("retention")
+    if payload.get("thumbnail_qa_passed") is False:
+        block_reasons.append("thumbnail")
 
     publishable = not block_reasons
     return {
         "quality_passed": quality_passed,
         "video_review_passed": video_review_passed,
         "retention_passed": retention_passed,
+        "thumbnail_qa_passed": payload.get("thumbnail_qa_passed"),
         "publishable": publishable,
         "block_reasons": block_reasons,
         "quality_score": payload.get("quality_score"),

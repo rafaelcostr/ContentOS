@@ -147,11 +147,18 @@ export interface PipelineDetail extends Pipeline {
 export interface Video {
   id: string;
   project_id: string;
+  pipeline_id?: string | null;
   title: string;
+  description?: string | null;
   status: string;
   duration_seconds: number | null;
   width: number;
   height: number;
+  fps: number;
+  render_asset_id?: string | null;
+  thumb_asset_id?: string | null;
+  hashtags?: string[] | null;
+  platform_variants?: Record<string, unknown> | null;
   created_at: string;
 }
 
@@ -323,18 +330,36 @@ export interface ProjectMemory {
 export interface ProjectDna {
   project_id: string;
   humor_level: number | null;
-  pace: string;
+  pace: string | null;
   visual_style: Record<string, string>;
   narrator_persona: string;
   preferred_formats: string[];
   hook_patterns: string[];
   cta_style: string;
-  cinematic_preset: string;
-  content_angle: string;
+  cinematic_preset: string | null;
+  content_angle: string | null;
   brand_keywords: string[];
   editing_preferences: Record<string, unknown>;
   default_voice_builtin: string;
   dna_context_preview: string;
+}
+
+export interface ProjectBrand {
+  project_id: string;
+  mission: string;
+  objectives: string[];
+  values: string[];
+  target_audience: string;
+  editorial_rules: string[];
+  color_palette: Record<string, string>;
+  tone: string;
+  vocabulary: string[];
+  visual_style: Record<string, string>;
+  narrator_persona: string;
+  niche: string;
+  goal: string;
+  style: Record<string, string>;
+  brand_context_preview: string;
 }
 
 export interface KnowledgeHit {
@@ -1088,6 +1113,10 @@ export interface ProviderAnalytics {
   endpoint?: string;
 }
 
+export interface ProviderAnalyticsResponse {
+  providers: ProviderAnalytics[];
+}
+
 export interface PlatformPluginInfo {
   name: string;
   version: string;
@@ -1182,6 +1211,250 @@ export interface Channel {
   has_credentials: boolean;
 }
 
+export interface YouTubeConnectionStatus {
+  channel_id: string;
+  project_id: string;
+  platform: string;
+  name: string;
+  is_active: boolean;
+  oauth_connected: boolean;
+  has_refresh_token: boolean;
+  token_expires_at: string | null;
+  oauth_connected_at: string | null;
+  youtube_channel_id: string | null;
+  last_synced_at: string | null;
+  subscriber_count: number | null;
+  view_count: number | null;
+  video_count: number | null;
+  shorts_count: number | null;
+  playlists_count: number | null;
+  needs_reconnect: boolean;
+}
+
+export interface YouTubeSyncResult {
+  synced: boolean;
+  platform?: string;
+  needs_reconnect: boolean;
+  error: string | null;
+  channel_totals: Record<string, unknown>;
+  media_items?: Record<string, unknown>[];
+  snapshots_saved: number;
+}
+
+export interface YouTubeSnapshot {
+  id: string;
+  channel_id: string | null;
+  fetched_at: string | null;
+  channel_totals: Record<string, unknown>;
+  media_items: Array<{
+    id: string;
+    external_media_id: string | null;
+    title: string | null;
+    metrics: Record<string, unknown>;
+    fetched_at: string | null;
+  }>;
+}
+
+export interface GrowthChannelProfile {
+  channel_id: string;
+  project_id: string;
+  platform: string;
+  name: string;
+  score: number;
+  profile: Record<string, unknown>;
+  report: Record<string, unknown>;
+  analyzed_at: string | null;
+  is_active: boolean;
+  has_credentials: boolean;
+}
+
+export interface ChannelAnalysis {
+  channel_id: string;
+  project_id: string;
+  platform: string;
+  channel_name: string;
+  score: number;
+  summary: string;
+  report: Record<string, unknown>;
+  profile: Record<string, unknown>;
+  recommendations: Array<Record<string, unknown>>;
+  analyzed_at: string;
+}
+
+export interface ChannelMemory {
+  channel_id: string;
+  project_id: string;
+  winning_videos: Array<Record<string, unknown>>;
+  losing_videos: Array<Record<string, unknown>>;
+  top_hooks: string[];
+  top_ctas: string[];
+  top_themes: string[];
+  top_hashtags: string[];
+  best_posting_hours: number[];
+  insights: string[];
+  notes: string;
+  channel_context_preview: string;
+}
+
+export interface GrowthCompetitor {
+  id: string;
+  project_id: string;
+  platform: string;
+  handle: string;
+  display_name: string | null;
+  url: string | null;
+  notes: string | null;
+  metrics: Record<string, unknown>;
+  created_at: string | null;
+  last_synced_at?: string | null;
+  last_analyzed_at?: string | null;
+  analysis_score?: number | null;
+  analysis_summary?: string | null;
+}
+
+export interface CompetitorAnalysis {
+  competitor_id: string;
+  project_id: string;
+  platform: string;
+  handle: string;
+  display_name: string;
+  score: number;
+  summary: string;
+  patterns: Record<string, unknown>;
+  recommendations: Array<Record<string, unknown>>;
+  analyzed_at: string;
+}
+
+export interface GrowthRecommendation {
+  id: string | null;
+  project_id: string;
+  kind: string;
+  title: string;
+  detail: string;
+  priority: string | number;
+  confidence?: number;
+  source: string;
+  status?: string;
+  metadata: Record<string, unknown>;
+  created_at: string | null;
+}
+
+export interface GrowthStrategy {
+  id: string | null;
+  project_id: string;
+  positioning: string;
+  goals: string[];
+  kpis: Record<string, unknown>;
+  cadence: Record<string, unknown>;
+  updated_at: string | null;
+}
+
+export interface ChannelManagerAction {
+  action: string;
+  title: string;
+  detail: string;
+  priority: string;
+  calendar_item_id: string | null;
+  can_execute: boolean;
+  block_reason: string | null;
+  execution: Record<string, unknown>;
+}
+
+export interface ChannelManagerPlan {
+  channel_id: string;
+  project_id: string;
+  platform: string;
+  channel_name: string;
+  summary: string;
+  health_status: string;
+  focus_topics: string[];
+  actions: ChannelManagerAction[];
+  opportunities: string[];
+  risks: string[];
+  signals_summary: Record<string, unknown>;
+  generated_at: string;
+}
+
+export interface ChannelManagerRunResult {
+  action: string;
+  status: string;
+  detail: string;
+  calendar_item_id: string | null;
+  pipeline_id: string | null;
+  schedule_id: string | null;
+}
+
+export interface ChannelManagerExecuteResult {
+  plan: ChannelManagerPlan;
+  executed: ChannelManagerRunResult[];
+  dry_run: boolean;
+}
+
+export interface ChannelOverviewItem {
+  channel_id: string;
+  project_id: string;
+  platform: string;
+  name: string;
+  score: number;
+  health_status: string;
+  calendar_planned: number;
+  calendar_scheduled: number;
+  recommendations_open: number;
+  has_credentials: boolean;
+  is_active: boolean;
+}
+
+export interface ChannelWorkspace {
+  scope: {
+    org_id: string | null;
+    project_id: string;
+    channel_id: string;
+    platform: string;
+    channel_name: string;
+  };
+  profile: GrowthChannelProfile | null;
+  memory: Record<string, unknown>;
+  analytics: Record<string, unknown>;
+  performance: Array<Record<string, unknown>>;
+  learning: Array<Record<string, unknown>>;
+  calendar: Array<Record<string, unknown>>;
+  strategy: GrowthStrategy | null;
+  recommendations: GrowthRecommendation[];
+  competitors: GrowthCompetitor[];
+  assets: Array<Record<string, unknown>>;
+  manager_plan: Record<string, unknown> | null;
+  summary: string;
+  health_status: string;
+}
+
+export interface GrowthHistoryEvent {
+  id: string;
+  project_id: string;
+  channel_id: string | null;
+  kind: string;
+  title: string;
+  detail: string;
+  status: string;
+  occurred_at: string;
+  metadata: Record<string, unknown>;
+}
+
+export interface GrowthReport {
+  project_id: string;
+  generated_at: string;
+  score: number;
+  channels: GrowthChannelProfile[];
+  competitors: GrowthCompetitor[];
+  recommendations: GrowthRecommendation[];
+  strategy: GrowthStrategy;
+  summary: string;
+  channel_health?: Array<Record<string, unknown>>;
+  opportunities?: string[];
+  risks?: string[];
+  asset_ranking?: Array<Record<string, unknown>>;
+  report_detail?: Record<string, unknown>;
+}
+
 export interface PublishPlatformStatus {
   platform: string;
   enabled: boolean;
@@ -1266,6 +1539,12 @@ export const api = {
   getProjectDna: (projectId: string) => fetchApi<ProjectDna>(`/api/v1/projects/${projectId}/dna`),
   patchProjectDna: (projectId: string, body: Partial<Omit<ProjectDna, "project_id" | "dna_context_preview">>) =>
     fetchApi<ProjectDna>(`/api/v1/projects/${projectId}/dna`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
+  getProjectBrand: (projectId: string) => fetchApi<ProjectBrand>(`/api/v1/projects/${projectId}/brand`),
+  patchProjectBrand: (projectId: string, body: Partial<Omit<ProjectBrand, "project_id" | "brand_context_preview">>) =>
+    fetchApi<ProjectBrand>(`/api/v1/projects/${projectId}/brand`, {
       method: "PATCH",
       body: JSON.stringify(body),
     }),
@@ -1524,6 +1803,7 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ name, description }),
     }),
+  deleteProject: (id: string) => fetchApi<void>(`/api/v1/projects/${id}`, { method: "DELETE" }),
   getPipelines: () => fetchApi<Pipeline[]>("/api/v1/pipelines"),
   getPipelineDetail: (id: string) => fetchApi<PipelineDetail>(`/api/v1/pipelines/${id}`),
   cancelPipeline: (id: string) =>
@@ -1569,6 +1849,7 @@ export const api = {
   deleteCustomWorkflow: (slug: string) =>
     fetchApi<void>(`/api/v1/workflows/custom/${slug}`, { method: "DELETE" }),
   getVideos: () => fetchApi<Video[]>("/api/v1/videos"),
+  deleteVideo: (id: string) => fetchApi<void>(`/api/v1/videos/${id}`, { method: "DELETE" }),
   getLogs: (agent?: string) =>
     fetchApi<LogEntry[]>(`/api/v1/logs${agent ? `?agent=${agent}` : ""}`),
   getAssets: (category?: string) =>
@@ -1815,11 +2096,305 @@ export const api = {
     fetchApi<void>(`/api/v1/voice-profiles/${profileId}`, { method: "DELETE" }),
   getChannels: (projectId?: string) =>
     fetchApi<Channel[]>(`/api/v1/channels${projectId ? `?project_id=${projectId}` : ""}`),
+  getChannel: (channelId: string) => fetchApi<Channel & { credentials?: Record<string, unknown> | null }>(`/api/v1/channels/${channelId}`),
   createChannel: (projectId: string, platform: string, name: string, credentials?: object) =>
     fetchApi<Channel>("/api/v1/channels", {
       method: "POST",
       body: JSON.stringify({ project_id: projectId, platform, name, credentials }),
     }),
+  updateChannel: (channelId: string, body: { name?: string; is_active?: boolean }) =>
+    fetchApi<Channel>(`/api/v1/channels/${channelId}`, {
+      method: "PUT",
+      body: JSON.stringify(body),
+    }),
+  deleteChannel: (channelId: string) =>
+    fetchApi<void>(`/api/v1/channels/${channelId}`, { method: "DELETE" }),
+  getYouTubeChannelStatus: (channelId: string) =>
+    fetchApi<YouTubeConnectionStatus>(`/api/v1/channels/${channelId}/youtube/status`),
+  syncYouTubeChannel: (channelId: string, limit?: number) => {
+    const params = limit ? `?limit=${limit}` : "";
+    return fetchApi<YouTubeSyncResult>(`/api/v1/channels/${channelId}/youtube/sync${params}`, { method: "POST" });
+  },
+  getYouTubeChannelData: (channelId: string) =>
+    fetchApi<YouTubeSnapshot | null>(`/api/v1/channels/${channelId}/youtube/data`),
+  getPlatformChannelStatus: (channelId: string) =>
+    fetchApi<{
+      channel_id: string;
+      platform: string;
+      platform_label: string;
+      oauth_connected: boolean;
+      analytics_supported: boolean;
+      publish_supported: boolean;
+      needs_reconnect: boolean;
+      last_synced_at: string | null;
+      channel_totals: Record<string, unknown>;
+    }>(`/api/v1/channels/${channelId}/platform/status`),
+  syncPlatformChannel: (channelId: string, limit?: number) => {
+    const params = limit ? `?limit=${limit}` : "";
+    return fetchApi<{
+      synced: boolean;
+      platform: string;
+      needs_reconnect: boolean;
+      error: string | null;
+      channel_totals: Record<string, unknown>;
+      snapshots_saved: number;
+    }>(`/api/v1/channels/${channelId}/platform/sync${params}`, { method: "POST" });
+  },
+  getGrowthPlatforms: (oauthOnly = false) =>
+    fetchApi<
+      Array<{
+        id: string;
+        label: string;
+        oauth_supported: boolean;
+        analytics_supported: boolean;
+        publish_supported: boolean;
+        content_variant_id: string | null;
+        content_types: string[];
+      }>
+    >(`/api/v1/growth/platforms?oauth_only=${oauthOnly}`),
+  analyzeChannel: (channelId: string) =>
+    fetchApi<ChannelAnalysis>(`/api/v1/channels/${channelId}/analyze`, { method: "POST" }),
+  getChannelAnalysis: (channelId: string) =>
+    fetchApi<ChannelAnalysis | null>(`/api/v1/channels/${channelId}/analysis`),
+  getChannelAnalysisHistory: (channelId: string, limit = 20) =>
+    fetchApi<Array<{ id: string; score: number; summary: string; created_at: string | null }>>(
+      `/api/v1/channels/${channelId}/analysis/history?limit=${limit}`
+    ),
+  getChannelMemory: (channelId: string) => fetchApi<ChannelMemory>(`/api/v1/channels/${channelId}/memory`),
+  patchChannelMemory: (channelId: string, body: Partial<Omit<ChannelMemory, "channel_id" | "project_id" | "channel_context_preview">>) =>
+    fetchApi<ChannelMemory>(`/api/v1/channels/${channelId}/memory`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
+  seedChannelMemory: (channelId: string) =>
+    fetchApi<ChannelMemory>(`/api/v1/channels/${channelId}/memory/seed`, { method: "POST" }),
+  getGrowthChannels: (projectId: string) =>
+    fetchApi<GrowthChannelProfile[]>(`/api/v1/growth/channels?project_id=${projectId}`),
+  getGrowthChannelsOverview: (projectId: string, horizonDays = 30) =>
+    fetchApi<ChannelOverviewItem[]>(
+      `/api/v1/growth/channels/overview?project_id=${projectId}&horizon_days=${horizonDays}`
+    ),
+  getChannelWorkspace: (channelId: string, horizonDays = 30) =>
+    fetchApi<ChannelWorkspace>(
+      `/api/v1/growth/channels/${channelId}/workspace?horizon_days=${horizonDays}`
+    ),
+  getGrowthCompetitors: (projectId: string) =>
+    fetchApi<GrowthCompetitor[]>(`/api/v1/growth/competitors?project_id=${projectId}`),
+  createGrowthCompetitor: (body: {
+    project_id: string;
+    platform: string;
+    handle: string;
+    display_name?: string;
+    url?: string;
+    notes?: string;
+  }) =>
+    fetchApi<GrowthCompetitor>("/api/v1/growth/competitors", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  syncGrowthCompetitor: (competitorId: string, limit?: number) => {
+    const params = limit ? `?limit=${limit}` : "";
+    return fetchApi<{ competitor_id: string; synced: boolean; error: string | null; metrics: Record<string, unknown> }>(
+      `/api/v1/growth/competitors/${competitorId}/sync${params}`,
+      { method: "POST" }
+    );
+  },
+  analyzeGrowthCompetitor: (competitorId: string) =>
+    fetchApi<CompetitorAnalysis>(`/api/v1/growth/competitors/${competitorId}/analyze`, { method: "POST" }),
+  syncAllGrowthCompetitors: (projectId: string, limit?: number) => {
+    const params = new URLSearchParams({ project_id: projectId });
+    if (limit) params.set("limit", String(limit));
+    return fetchApi<Array<{ competitor_id: string; synced: boolean; error: string | null }>>(
+      `/api/v1/growth/competitors/sync-all?${params}`,
+      { method: "POST" }
+    );
+  },
+  getGrowthReport: (projectId: string) =>
+    fetchApi<GrowthReport>(`/api/v1/growth/report?project_id=${projectId}`),
+  getGrowthStrategy: (projectId: string) =>
+    fetchApi<GrowthStrategy>(`/api/v1/growth/strategy?project_id=${projectId}`),
+  generateGrowthStrategy: (projectId: string, horizonDays = 30) =>
+    fetchApi<{
+      project_id: string;
+      strategy: GrowthStrategy;
+      calendar: { project_id: string; horizon_days: number; items: Array<Record<string, unknown>> };
+      campaigns: Array<Record<string, unknown>>;
+      channel_goals: Record<string, string[]>;
+      summary: string;
+      generated_at: string;
+    }>(`/api/v1/growth/strategy/generate?project_id=${projectId}&horizon_days=${horizonDays}`, { method: "POST" }),
+  getGrowthCalendar: (projectId: string, horizonDays = 30, channelId?: string) => {
+    const params = new URLSearchParams({ project_id: projectId, horizon_days: String(horizonDays) });
+    if (channelId) params.set("channel_id", channelId);
+    return fetchApi<
+      Array<{
+        id: string | null;
+        project_id: string;
+        channel_id: string | null;
+        title: string;
+        topic: string;
+        planned_for: string | null;
+        status: string;
+        metadata: Record<string, unknown>;
+      }>
+    >(`/api/v1/growth/calendar?${params}`);
+  },
+  produceGrowthCalendarItem: (calendarItemId: string, workflowName?: string) => {
+    const params = workflowName ? `?workflow_name=${encodeURIComponent(workflowName)}` : "";
+    return fetchApi<{
+      calendar_item_id: string;
+      pipeline_id: string;
+      status: string;
+      topic: string;
+      context_json: Record<string, unknown>;
+    }>(`/api/v1/growth/calendar/${calendarItemId}/produce${params}`, { method: "POST" });
+  },
+  producePlannedGrowthCalendar: (projectId: string, limit = 3, workflowName?: string) => {
+    const params = new URLSearchParams({ project_id: projectId, limit: String(limit) });
+    if (workflowName) params.set("workflow_name", workflowName);
+    return fetchApi<{
+      produced: Array<{
+        calendar_item_id: string;
+        pipeline_id: string;
+        status: string;
+        topic: string;
+        context_json: Record<string, unknown>;
+      }>;
+      errors: Array<{ calendar_item_id: string; detail: string }>;
+    }>(`/api/v1/growth/calendar/produce-planned?${params}`, { method: "POST" });
+  },
+  generateGrowthCalendarPost: (calendarItemId: string, includeCompanion = false) =>
+    fetchApi<{
+      calendar_item_id: string;
+      project_id: string;
+      topic: string;
+      platform: string;
+      content_type: string;
+      formats: string[];
+      artifacts: Array<{ format: string; title: string; content: string; data: Record<string, unknown>; source: string }>;
+      status: string;
+    }>(`/api/v1/growth/calendar/${calendarItemId}/generate-post?include_companion=${includeCompanion}`, {
+      method: "POST",
+    }),
+  dispatchGrowthCalendarItem: (calendarItemId: string, includeCompanion = false) =>
+    fetchApi<{
+      mode: string;
+      calendar_item_id: string;
+      post: {
+        calendar_item_id: string;
+        artifacts: Array<{ format: string; title: string; content: string }>;
+        status: string;
+      } | null;
+      produce: { calendar_item_id: string; pipeline_id: string; status: string; topic: string } | null;
+    }>(`/api/v1/growth/calendar/${calendarItemId}/dispatch?include_companion=${includeCompanion}`, { method: "POST" }),
+  getGrowthPosts: (projectId: string, limit = 50) =>
+    fetchApi<
+      Array<{
+        id: string | null;
+        project_id: string;
+        title: string;
+        topic: string;
+        status: string;
+        metadata: Record<string, unknown>;
+      }>
+    >(`/api/v1/growth/posts?project_id=${projectId}&limit=${limit}`),
+  scheduleGrowthCalendarItem: (calendarItemId: string, mode: "assisted" | "automatic" = "assisted") =>
+    fetchApi<{
+      schedule: {
+        id: string;
+        is_active: boolean;
+        mode: string;
+        next_run_at: string | null;
+        cron_expression: string;
+      };
+      calendar_item: { id: string | null; status: string; metadata: Record<string, unknown> };
+    }>(`/api/v1/growth/calendar/${calendarItemId}/schedule?mode=${mode}`, { method: "POST" }),
+  approveGrowthCalendarSchedule: (calendarItemId: string) =>
+    fetchApi<{ id: string | null; status: string; metadata: Record<string, unknown> }>(
+      `/api/v1/growth/calendar/${calendarItemId}/schedule/approve`,
+      { method: "POST" }
+    ),
+  syncGrowthCalendarSchedules: (projectId: string, mode: "assisted" | "automatic" = "assisted", limit = 5) =>
+    fetchApi<{ created: Array<Record<string, unknown>>; count: number }>(
+      `/api/v1/growth/calendar/sync-schedules?project_id=${projectId}&mode=${mode}&limit=${limit}`,
+      { method: "POST" }
+    ),
+  getGrowthSchedules: (projectId: string) =>
+    fetchApi<
+      Array<{
+        id: string;
+        calendar_item_id: string;
+        mode: string;
+        is_active: boolean;
+        planned_for: string | null;
+        calendar_status: string;
+        cron_expression: string;
+      }>
+    >(`/api/v1/growth/schedules?project_id=${projectId}`),
+  getGrowthPerformance: (projectId: string) =>
+    fetchApi<{
+      project_id: string;
+      summary: string;
+      total_media: number;
+      high_performers: number;
+      low_performers: number;
+      avg_ctr: number | null;
+      avg_retention: number | null;
+      platform_breakdown: Array<Record<string, unknown>>;
+      top_hooks: string[];
+      top_assets: Array<Record<string, unknown>>;
+      underperformers?: Array<Record<string, unknown>>;
+      opportunities: string[];
+      risks: string[];
+      recommendations: GrowthRecommendation[];
+    }>(`/api/v1/growth/performance?project_id=${projectId}`),
+  syncGrowthPerformance: (projectId: string, saveRecommendations = true) =>
+    fetchApi<{ interpretation: Record<string, unknown>; recommendations_saved: number }>(
+      `/api/v1/growth/performance/sync?project_id=${projectId}&save_recommendations=${saveRecommendations}`,
+      { method: "POST" }
+    ),
+  getGrowthRecommendations: (projectId: string, channelId?: string) => {
+    const params = new URLSearchParams({ project_id: projectId });
+    if (channelId) params.set("channel_id", channelId);
+    return fetchApi<GrowthRecommendation[]>(`/api/v1/growth/recommendations?${params}`);
+  },
+  getGrowthHistory: (projectId: string, limit = 50) =>
+    fetchApi<GrowthHistoryEvent[]>(`/api/v1/growth/history?project_id=${projectId}&limit=${limit}`),
+  getGrowthHealth: (projectId?: string) => {
+    const params = projectId ? `?project_id=${projectId}` : "";
+    return fetchApi<{
+      status: string;
+      checks: Record<string, boolean>;
+      summary: string;
+      oauth_issues: number;
+      generated_at: string;
+    }>(`/api/v1/growth/health${params}`);
+  },
+  getGrowthOAuthAudit: (projectId: string) =>
+    fetchApi<{
+      total_channels: number;
+      by_status: Record<string, number>;
+      needs_reconnect: number;
+      channels: Array<Record<string, unknown>>;
+    }>(`/api/v1/growth/oauth-audit?project_id=${projectId}`),
+  getChannelManagerPlan: (channelId: string, schedulingMode: "assisted" | "automatic" = "assisted") =>
+    fetchApi<ChannelManagerPlan>(
+      `/api/v1/growth/channels/${channelId}/manager/plan?scheduling_mode=${schedulingMode}`
+    ),
+  runChannelManager: (
+    channelId: string,
+    options?: { dryRun?: boolean; maxActions?: number; schedulingMode?: "assisted" | "automatic" }
+  ) => {
+    const params = new URLSearchParams({
+      dry_run: String(options?.dryRun ?? false),
+      max_actions: String(options?.maxActions ?? 3),
+      scheduling_mode: options?.schedulingMode ?? "assisted",
+    });
+    return fetchApi<ChannelManagerExecuteResult>(
+      `/api/v1/growth/channels/${channelId}/manager/run?${params}`,
+      { method: "POST" }
+    );
+  },
   getPipelineJobs: (pipelineId: string) =>
     fetchApi<{ id: string; step: string; status: string; order: number }[]>(`/api/v1/jobs/pipeline/${pipelineId}`),
   uploadTake: (theme: string, label: string, file: File, projectId?: string) => {

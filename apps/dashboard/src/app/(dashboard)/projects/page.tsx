@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { FormEvent, useState } from "react";
+import { FormEvent, MouseEvent, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -96,6 +96,53 @@ export default function ProjectsPage() {
       setErrorMsg(parseApiError(err));
     },
   });
+
+  const deletePipeline = useMutation({
+    mutationFn: (id: string) => api.deletePipeline(id),
+    onSuccess: (_, id) => {
+      qc.invalidateQueries({ queryKey: ["pipelines", selectedProject] });
+      qc.invalidateQueries({ queryKey: ["pipelines"] });
+      qc.removeQueries({ queryKey: ["pipeline", id] });
+      setErrorMsg("");
+      setSuccessMsg("Pipeline excluído.");
+    },
+    onError: (err) => {
+      setSuccessMsg("");
+      setErrorMsg(parseApiError(err));
+    },
+  });
+
+  const deleteProject = useMutation({
+    mutationFn: (id: string) => api.deleteProject(id),
+    onSuccess: (_, id) => {
+      qc.invalidateQueries({ queryKey: ["projects"] });
+      qc.invalidateQueries({ queryKey: ["pipelines"] });
+      if (selectedProject === id) setSelectedProject(null);
+      setErrorMsg("");
+      setSuccessMsg("Projeto excluído.");
+    },
+    onError: (err) => {
+      setSuccessMsg("");
+      setErrorMsg(parseApiError(err));
+    },
+  });
+
+  function handleDeleteProject(e: MouseEvent, projectId: string, projectName: string) {
+    e.stopPropagation();
+    if (
+      !window.confirm(
+        `Excluir o projeto "${projectName}" e todos os pipelines? Esta ação não pode ser desfeita.`
+      )
+    ) {
+      return;
+    }
+    deleteProject.mutate(projectId);
+  }
+
+  function handleDeletePipeline(pipelineId: string, pipelineTopic: string) {
+    if (!window.confirm(`Excluir o pipeline "${pipelineTopic}"? Esta ação não pode ser desfeita.`)) return;
+    deletePipeline.mutate(pipelineId);
+  }
 
   function handleCreateProject(e: FormEvent) {
     e.preventDefault();
@@ -231,9 +278,21 @@ export default function ProjectsPage() {
               setErrorMsg("");
             }}
           >
-            <CardHeader>
-              <CardTitle className="text-base">{p.name}</CardTitle>
-              <p className="text-xs text-muted-foreground">{formatDate(p.created_at)}</p>
+            <CardHeader className="flex flex-row items-start justify-between gap-2 space-y-0">
+              <div className="min-w-0">
+                <CardTitle className="text-base">{p.name}</CardTitle>
+                <p className="text-xs text-muted-foreground">{formatDate(p.created_at)}</p>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={deleteProject.isPending}
+                className="shrink-0 border-red-500/40 text-red-400 hover:bg-red-500/10"
+                onClick={(e) => handleDeleteProject(e, p.id, p.name)}
+              >
+                {deleteProject.isPending ? "..." : "Excluir"}
+              </Button>
             </CardHeader>
             {p.description && (
               <CardContent>
@@ -256,13 +315,28 @@ export default function ProjectsPage() {
             {pipelines.map((pl) => (
               <div
                 key={pl.id}
-                className="flex items-center justify-between rounded-lg border border-border p-4"
+                className="flex items-center justify-between gap-3 rounded-lg border border-border p-4"
               >
-                <div>
+                <div className="min-w-0 flex-1">
                   <p className="font-medium">{pl.topic}</p>
-                  <p className="text-xs text-muted-foreground">{formatDate(pl.created_at)}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {formatDate(pl.created_at)}
+                    {pl.workflow_name ? ` · ${pl.workflow_name}` : ""}
+                  </p>
                 </div>
-                <Badge className={statusColor(pl.status)}>{statusLabel(pl.status)}</Badge>
+                <div className="flex shrink-0 items-center gap-2">
+                  <Badge className={statusColor(pl.status)}>{statusLabel(pl.status)}</Badge>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={deletePipeline.isPending}
+                    className="border-red-500/40 text-red-400 hover:bg-red-500/10"
+                    onClick={() => handleDeletePipeline(pl.id, pl.topic)}
+                  >
+                    {deletePipeline.isPending ? "Excluindo..." : "Excluir"}
+                  </Button>
+                </div>
               </div>
             ))}
           </div>

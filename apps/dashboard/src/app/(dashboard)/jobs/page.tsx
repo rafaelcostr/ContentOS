@@ -49,12 +49,12 @@ export default function JobsPage() {
     },
   });
 
-  const invalidateTimer = useRef<ReturnType<typeof setTimeout>>();
+  const invalidateTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const onWsEvent = useCallback(
     (event: WorkflowEvent) => {
       if (!event.pipeline_id) return;
-      clearTimeout(invalidateTimer.current);
+      if (invalidateTimer.current) clearTimeout(invalidateTimer.current);
       invalidateTimer.current = setTimeout(() => {
         queryClient.invalidateQueries({ queryKey: ["pipelines"] });
         if (event.pipeline_id === activeId || !selectedId) {

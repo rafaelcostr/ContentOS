@@ -23,6 +23,7 @@ class ScheduleCreate(BaseModel):
     workflow_name: str | None = Field(default=None, max_length=80)
     timezone: str = Field(default="UTC", max_length=64)
     is_active: bool = True
+    context_json: dict | None = None
 
 
 class ScheduleUpdate(BaseModel):
@@ -48,6 +49,7 @@ class ScheduleResponse(BaseModel):
     next_run_at: datetime | None
     last_pipeline_id: UUID | None
     last_error: str | None
+    context_json: dict | None = None
     created_at: datetime
 
 
@@ -66,6 +68,7 @@ def _to_response(row: PipelineSchedule) -> ScheduleResponse:
         next_run_at=row.next_run_at,
         last_pipeline_id=row.last_pipeline_id,
         last_error=row.last_error,
+        context_json=row.context_json,
         created_at=row.created_at,
     )
 
@@ -110,6 +113,7 @@ async def create_schedule(
         is_active=body.is_active,
         created_by_user_id=user.id,
         next_run_at=next_run,
+        context_json=body.context_json,
     )
     db.add(row)
     await db.flush()

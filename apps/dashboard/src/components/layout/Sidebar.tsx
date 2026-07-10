@@ -2,10 +2,12 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
 import {
   Activity,
   Brain,
   Bot,
+  ChevronDown,
   Clapperboard,
   Coins,
   Cpu,
@@ -31,12 +33,15 @@ import {
   Video,
   BarChart3,
   GraduationCap,
+  CalendarDays,
   MessageCircle,
   TrendingUp,
   Gauge,
-  Clapperboard,
   Hash,
   LineChart,
+  Target,
+  Palette,
+  Users,
   Workflow,
   Factory,
 } from "lucide-react";
@@ -111,12 +116,38 @@ const sections: { title: string; items: NavItem[] }[] = [
       { href: "/settings", label: "Configurações", icon: Settings },
     ],
   },
+  {
+    title: "Growth",
+    items: [
+      { href: "/growth", label: "Growth AI", icon: Target },
+      { href: "/brand", label: "Brand", icon: Palette },
+      { href: "/channels", label: "Canais", icon: Share2 },
+      { href: "/competitors", label: "Concorrentes", icon: Users },
+      { href: "/strategy", label: "Estratégia", icon: CalendarDays },
+      { href: "/calendar", label: "Calendário", icon: CalendarDays },
+      { href: "/performance", label: "Performance", icon: LineChart },
+      { href: "/recommendations", label: "Recomendações", icon: Hash },
+      { href: "/history", label: "Histórico", icon: ScrollText },
+    ],
+  },
 ];
 
 export function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const logout = useAuthStore((s) => s.logout);
+  const activeSection = useMemo(
+    () => sections.find((section) => section.items.some((item) => isActivePath(pathname, item.href)))?.title,
+    [pathname]
+  );
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>(() =>
+    Object.fromEntries(sections.map((section) => [section.title, section.title === "Produção"]))
+  );
+
+  useEffect(() => {
+    if (!activeSection) return;
+    setOpenSections((current) => ({ ...current, [activeSection]: true }));
+  }, [activeSection]);
 
   function handleLogout() {
     logout();
@@ -124,8 +155,11 @@ export function Sidebar() {
   }
 
   function isActive(href: string) {
-    if (href === "/") return pathname === "/";
-    return pathname === href || pathname.startsWith(`${href}/`);
+    return isActivePath(pathname, href);
+  }
+
+  function toggleSection(title: string) {
+    setOpenSections((current) => ({ ...current, [title]: !current[title] }));
   }
 
   return (
@@ -138,29 +172,46 @@ export function Sidebar() {
         </div>
       </div>
       <OrgSelector />
-      <nav className="flex-1 space-y-4 overflow-y-auto p-3">
+      <nav className="flex-1 space-y-1 overflow-y-auto p-2">
         {sections.map((section) => (
-          <div key={section.title}>
-            <p className="mb-1 px-3 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">
-              {section.title}
-            </p>
-            <div className="space-y-0.5">
-              {section.items.map(({ href, label, icon: Icon }) => (
-                <Link
-                  key={href}
-                  href={href}
-                  className={cn(
-                    "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
-                    isActive(href)
-                      ? "bg-primary/15 text-primary"
-                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                  )}
-                >
-                  <Icon className="h-4 w-4 shrink-0" />
-                  {label}
-                </Link>
-              ))}
-            </div>
+          <div key={section.title} className="rounded-md">
+            <button
+              type="button"
+              onClick={() => toggleSection(section.title)}
+              className={cn(
+                "flex h-9 w-full items-center justify-between rounded-md px-3 text-left text-xs font-semibold uppercase text-muted-foreground transition-colors hover:bg-muted hover:text-foreground",
+                activeSection === section.title && "text-primary"
+              )}
+            >
+              <span>{section.title}</span>
+              <span className="flex items-center gap-2">
+                <span className="rounded border border-border px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                  {section.items.length}
+                </span>
+                <ChevronDown
+                  className={cn("h-3.5 w-3.5 transition-transform", openSections[section.title] && "rotate-180")}
+                />
+              </span>
+            </button>
+            {openSections[section.title] && (
+              <div className="mt-1 space-y-0.5 pb-1">
+                {section.items.map(({ href, label, icon: Icon }) => (
+                  <Link
+                    key={href}
+                    href={href}
+                    className={cn(
+                      "flex h-8 items-center gap-3 rounded-md px-3 text-sm transition-colors",
+                      isActive(href)
+                        ? "bg-primary/15 text-primary"
+                        : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                    )}
+                  >
+                    <Icon className="h-4 w-4 shrink-0" />
+                    <span className="truncate">{label}</span>
+                  </Link>
+                ))}
+              </div>
+            )}
           </div>
         ))}
       </nav>
@@ -181,4 +232,9 @@ export function Sidebar() {
       </div>
     </aside>
   );
+}
+
+function isActivePath(pathname: string, href: string) {
+  if (href === "/") return pathname === "/";
+  return pathname === href || pathname.startsWith(`${href}/`);
 }

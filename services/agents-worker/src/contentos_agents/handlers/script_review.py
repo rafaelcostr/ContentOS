@@ -38,10 +38,17 @@ def _normalize_script(raw: dict, fallback: dict) -> dict:
         duration = float(out.get("duration_seconds", 45))
     except (TypeError, ValueError):
         duration = 45.0
-    out["duration_seconds"] = max(30, min(60, duration))
+    out["duration_seconds"] = max(35, min(60, duration))
     if not out.get("full_text"):
         parts = [out.get("hook"), out.get("development"), out.get("curiosity"), out.get("call_to_action")]
         out["full_text"] = " ".join(str(p) for p in parts if p)
+    full_text = str(out.get("full_text") or "").strip()
+    call_to_action = str(out.get("call_to_action") or "").strip()
+    if call_to_action and call_to_action.lower() not in full_text.lower():
+        full_text = f"{full_text} {call_to_action}".strip()
+    if full_text and full_text[-1] not in ".!?":
+        full_text += "."
+    out["full_text"] = full_text
     return out
 
 

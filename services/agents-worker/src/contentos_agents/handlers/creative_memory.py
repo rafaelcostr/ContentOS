@@ -60,9 +60,10 @@ class CreativeMemoryAgentHandler(BaseAgentHandler):
 
         database_url = _async_database_url()
         if database_url:
-            engine = create_async_engine(database_url, pool_pre_ping=True)
-            session_factory = async_sessionmaker(engine, expire_on_commit=False)
+            engine = None
             try:
+                engine = create_async_engine(database_url, pool_pre_ping=True)
+                session_factory = async_sessionmaker(engine, expire_on_commit=False)
                 async with session_factory() as db:
                     report = await merge_creative_memory_async(context, db)
                     await db.commit()
@@ -70,7 +71,8 @@ class CreativeMemoryAgentHandler(BaseAgentHandler):
                 logs.append(f"Async KB merge fallback: {exc}")
                 report = merge_creative_memory(context)
             finally:
-                await engine.dispose()
+                if engine is not None:
+                    await engine.dispose()
         else:
             logs.append("DATABASE_URL not configured; sync merge only")
             report = merge_creative_memory(context)

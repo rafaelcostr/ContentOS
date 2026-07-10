@@ -79,19 +79,42 @@ async def sync_channel_analytics(
     report.channel_totals = {k: v for k, v in totals.items() if k not in ("error", "needs_reconnect")}
     report.synced = True
 
-    if persist and items:
-        for item in items:
-            snap = PlatformAnalyticsSnapshot(
-                project_id=channel.project_id,
-                channel_id=channel.id,
-                platform=platform,
-                external_media_id=item.external_media_id,
-                title=item.title,
-                metrics=item.to_dict(),
-                channel_totals=report.channel_totals or None,
+    if platform == "youtube" and report.channel_totals.get("youtube_channel_id"):
+        creds = dict(channel.credentials or {})
+        creds["youtube_channel_id"] = report.channel_totals["youtube_channel_id"]
+        channel.credentials = creds
+
+    if persist and report.synced:
+        saved = 0
+        if report.channel_totals:
+            overview_id = report.channel_totals.get("youtube_channel_id") or f"channel:{channel.id}"
+            db.add(
+                PlatformAnalyticsSnapshot(
+                    project_id=channel.project_id,
+                    channel_id=channel.id,
+                    platform=platform,
+                    external_media_id=f"overview:{overview_id}",
+                    title=report.channel_totals.get("title") or channel.name,
+                    metrics={"kind": "channel_overview", **report.channel_totals},
+                    channel_totals=report.channel_totals,
+                )
             )
-            db.add(snap)
-        await db.flush()
+            saved += 1
+        for item in items:
+            db.add(
+                PlatformAnalyticsSnapshot(
+                    project_id=channel.project_id,
+                    channel_id=channel.id,
+                    platform=platform,
+                    external_media_id=item.external_media_id,
+                    title=item.title,
+                    metrics=item.to_dict(),
+                    channel_totals=report.channel_totals or None,
+                )
+            )
+            saved += 1
+        if saved:
+            await db.flush()
     return report
 
 
@@ -157,8 +180,10 @@ async def list_recent_snapshots(
 def summarize_snapshots(snapshots: list[dict[str, Any]]) -> dict[str, Any]:
     by_platform: dict[str, dict[str, Any]] = {}
     for snap in snapshots:
-        platform = snap.get("platform", "unknown")
         metrics = snap.get("metrics") or {}
+        if metrics.get("kind") == "channel_overview":
+            continue
+        platform = snap.get("platform", "unknown")
         bucket = by_platform.setdefault(
             platform,
             {"platform": platform, "media_count": 0, "total_views": 0, "total_likes": 0, "total_comments": 0},
@@ -168,3 +193,70 @@ def summarize_snapshots(snapshots: list[dict[str, Any]]) -> dict[str, Any]:
         bucket["total_likes"] += int(metrics.get("likes") or 0)
         bucket["total_comments"] += int(metrics.get("comments") or 0)
     return {"platforms": list(by_platform.values()), "snapshot_count": len(snapshots)}
+
+
+async def get_latest_channel_overview(
+    db: AsyncSession,
+    channel_id: UUID,
+    *,
+    platform: str | None = None,
+) -> dict[str, Any] | None:
+    query = (
+        select(PlatformAnalyticsSnapshot)
+        .where(PlatformAnalyticsSnapshot.channel_id == channel_id)
+        .order_by(PlatformAnalyticsSnapshot.fetched_at.desc())
+        .limit(50)
+    )
+    if platform:
+        query = query.where(PlatformAnalyticsSnapshot.platform == platform.lower())
+
+    rows = list((await db.execute(query)).scalars().all())
+    overview_row = None
+    media_items: list[dict[str, Any]] = []
+    for row in rows:
+        metrics = row.metrics or {}
+        is_overview = metrics.get("kind") == "channel_overview" or str(row.external_media_id or "").startswith("overview:")
+        if is_overview:
+            if overview_row is None:
+                overview_row = row
+            continue
+        media_items.append(
+            {
+                "id": str(row.id),
+                "external_media_id": row.external_media_id,
+                "title": row.title,
+                "metrics": metrics,
+                "fetched_at": row.fetched_at.isoformat() if row.fetched_at else None,
+            }
+        )
+
+    if overview_row is None:
+        return None
+
+    metrics = overview_row.metrics or {}
+    return {
+        "id": str(overview_row.id),
+        "channel_id": str(overview_row.channel_id) if overview_row.channel_id else None,
+        "platform": overview_row.platform,
+        "fetched_at": overview_row.fetched_at.isoformat() if overview_row.fetched_at else None,
+        "channel_totals": overview_row.channel_totals or metrics,
+        "media_items": media_items,
+    }
+
+
+def build_youtube_connection_status(channel: Channel) -> dict[str, Any]:
+    creds = dict(channel.credentials or {})
+    connected = credentials_connected(creds)
+    expires_at = creds.get("expires_at")
+    return {
+        "channel_id": str(channel.id),
+        "project_id": str(channel.project_id),
+        "platform": channel.platform,
+        "name": channel.name,
+        "is_active": channel.is_active,
+        "oauth_connected": connected,
+        "has_refresh_token": bool(creds.get("refresh_token")),
+        "token_expires_at": expires_at,
+        "oauth_connected_at": creds.get("oauth_connected_at"),
+        "youtube_channel_id": creds.get("youtube_channel_id"),
+    }

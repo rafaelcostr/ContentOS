@@ -3,6 +3,7 @@
 import asyncio
 import json
 import os
+import re
 import tempfile
 from pathlib import Path
 
@@ -84,6 +85,38 @@ class FFmpegProvider:
         )
         stdout, _ = await proc.communicate()
         return json.loads(stdout.decode())
+
+    async def probe_loudness(self, path: Path) -> float | None:
+        """Measure integrated loudness (LUFS) via ffmpeg loudnorm analysis."""
+        cmd = [
+            self.ffmpeg,
+            "-i",
+            str(path),
+            "-af",
+            "loudnorm=print_format=json",
+            "-f",
+            "null",
+            "-",
+        ]
+        if cmd[0] == "ffmpeg":
+            cmd[0] = self.ffmpeg
+        proc = await asyncio.create_subprocess_exec(
+            *cmd,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        _, stderr = await proc.communicate()
+        if proc.returncode != 0:
+            return None
+        text = stderr.decode(errors="replace")
+        match = re.search(r"\{[^{}]*\"input_i\"[^{}]*\}", text)
+        if not match:
+            return None
+        try:
+            data = json.loads(match.group(0))
+            return float(data["input_i"])
+        except (KeyError, TypeError, ValueError, json.JSONDecodeError):
+            return None
 
     async def create_placeholder(self, output_path: Path, duration: int = 10) -> None:
         cmd = [

@@ -90,7 +90,7 @@ services:
     ports:
       - "8080:8080"
     environment:
-      WHISPER_MODEL: ${WHISPER_MODEL:-large-v3}
+      WHISPER_MODEL: ${WHISPER_MODEL:-small}
       WHISPER_DEVICE: ${WHISPER_DEVICE:-cpu}
       WHISPER_COMPUTE_TYPE: ${WHISPER_COMPUTE_TYPE:-int8}
     volumes:
@@ -163,6 +163,9 @@ services:
       - PROMPTS_OVERRIDE_DIR=/data/prompts
       - USE_AI_CACHE=${USE_AI_CACHE:-true}
       - CACHE_REDIS_URL=redis://redis:6379/2
+      - CELERY_WORKER_CONCURRENCY=${CELERY_WORKER_CONCURRENCY:-1}
+      - MEDIA_COLLECT_MAX_SCENES=${MEDIA_COLLECT_MAX_SCENES:-8}
+      - MIN_VIDEO_DURATION_SECONDS=${MIN_VIDEO_DURATION_SECONDS:-30}
       - QUOTAS_ENFORCE=false
       - BILLING_ENFORCE_CREDITS=false
     volumes:
@@ -185,6 +188,7 @@ services:
       - USE_AI_GATEWAY=true
       - AI_GATEWAY_URL=http://ai-gateway:8020
       - AI_GATEWAY_FALLBACK=${AI_GATEWAY_FALLBACK:-true}
+      - CONTENT_SOURCES_ENABLED=${CONTENT_SOURCES_ENABLED:-pexels,pixabay,local_library,own_library}
       - PROMPTS_DIR=/app/packages/prompts/prompts
       - PROMPTS_OVERRIDE_DIR=/data/prompts
       - USE_AI_CACHE=${USE_AI_CACHE:-true}

@@ -50,6 +50,7 @@ class QualityAgentHandler(BaseAgentHandler):
 
         subtitle_sync_ok: bool | None = None
         bit_rate: int | None = None
+        integrated_lufs: float | None = None
 
         has_subtitle_artifacts = bool(subtitle_ref.get("key") or captions_ref.get("key"))
         has_segments = bool(segments)
@@ -123,6 +124,11 @@ class QualityAgentHandler(BaseAgentHandler):
                             except (TypeError, ValueError):
                                 bit_rate = None
 
+                        if probe_state["has_audio_stream"]:
+                            integrated_lufs = await ffmpeg.probe_loudness(video_path)
+                            if integrated_lufs is not None:
+                                logs.append(f"Loudness: {integrated_lufs:.1f} LUFS")
+
         if has_segments and subtitle_ref.get("key"):
             srt_ref = AssetRef(
                 id=uuid4(),
@@ -142,6 +148,7 @@ class QualityAgentHandler(BaseAgentHandler):
             **probe_state,
             subtitle_sync_ok=subtitle_sync_ok,
             bit_rate=bit_rate,
+            integrated_lufs=integrated_lufs,
         )
         logs.append(f"Quality score: {report.score}/10 (min={report.min_score}) passed={report.passed}")
         for name, value in report.dimensions.items():

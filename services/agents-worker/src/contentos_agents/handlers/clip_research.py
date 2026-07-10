@@ -37,6 +37,7 @@ class ClipResearchAgentHandler(PipelineAwareHandler):
         scene_results = await mgr.search_all_scenes(scenes, task_input.project_id, topic)
         logs.append(f"Found candidates across {len(mgr.list_sources())} sources")
 
+        refined: dict = {}
         try:
             prompt = self.render_prompt(
                 "clip_research",
@@ -60,6 +61,42 @@ class ClipResearchAgentHandler(PipelineAwareHandler):
                 logs.append(f"LLM refined {len(refined['queries'])} scene queries")
         except Exception as exc:
             logs.append(f"LLM refine skipped: {exc}")
+
+        queries = refined.get("queries") if isinstance(refined, dict) else None
+        if queries and isinstance(queries, list):
+            from contentos_sources.domain.source_query import SourceQuery
+
+            for i, rq in enumerate(queries):
+                if i >= len(scene_results):
+                    break
+                if not isinstance(rq, dict):
+                    continue
+                scene = scenes[i] if i < len(scenes) else {}
+                qtext = str(rq.get("query") or rq.get("search") or rq.get("description") or "").strip()
+                if not qtext:
+                    continue
+                query = SourceQuery(
+                    scene_description=qtext,
+                    visual_hint=str(rq.get("visual_hint") or scene.get("visual", scene.get("visual_hint", ""))),
+                    duration_needed=float(scene.get("duration_seconds", 5)),
+                    tags=scene.get("tags", []) if isinstance(scene.get("tags"), list) else [],
+                    project_id=task_input.project_id,
+                    scene_label=str(scene_results[i].get("scene_label", f"scene_{i}")),
+                    topic=topic,
+                )
+                refined_candidates = await mgr.search(query)
+                if not refined_candidates:
+                    continue
+                merged = [c.to_dict() for c in refined_candidates[:5]]
+                existing = scene_results[i].get("candidates") or []
+                seen = {(c.get("source_id"), c.get("candidate_id")) for c in merged}
+                for candidate in existing:
+                    key = (candidate.get("source_id"), candidate.get("candidate_id"))
+                    if key not in seen:
+                        merged.append(candidate)
+                        seen.add(key)
+                scene_results[i]["candidates"] = merged[:8]
+                logs.append(f"Refined search scene {i}: {len(refined_candidates)} new candidates")
 
         store = get_collection_store()
         if store:

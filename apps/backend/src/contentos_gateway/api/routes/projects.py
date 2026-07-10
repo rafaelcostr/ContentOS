@@ -8,10 +8,11 @@ from contentos_database.billing_credits import (
     pipeline_credit_cost,
 )
 from contentos_database.billing_seed import ensure_org_billing
-from contentos_database.models import Pipeline, Project, User
+from contentos_database.models import Pipeline, PipelineStatus, Project, ProjectMemory, User
 from contentos_database.quota_service import QuotaExceededError, assert_can_start_pipeline, quotas_enforced
 from contentos_database.session import get_session
 from contentos_gateway.api.deps import get_current_user, require_editor
+from contentos_gateway.api.routes.pipelines import _cancel_via_workflow
 from contentos_gateway.config import settings
 from contentos_gateway.schemas import PipelineResponse, ProjectCreate, ProjectResponse
 from contentos_gateway.services.billing_service import consume_pipeline_credit, get_org_billing
@@ -22,8 +23,9 @@ from contentos_gateway.services.org_service import (
     resolve_org_id,
 )
 from contentos_intelligence.application.recommendations import build_project_recommendations
-from fastapi import APIRouter, Depends, Header, HTTPException, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Response, status
 from pydantic import BaseModel, Field
+from sqlalchemy import delete as sa_delete
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -93,6 +95,27 @@ async def get_project(
 ) -> ProjectResponse:
     project = await get_accessible_project(db, project_id, user.id)
     return ProjectResponse.model_validate(project)
+
+
+@router.delete("/{project_id}", status_code=204, response_class=Response)
+async def delete_project(
+    project_id: UUID,
+    db: AsyncSession = Depends(get_session),
+    user: User = Depends(require_editor()),
+) -> Response:
+    project = await get_accessible_project(db, project_id, user.id)
+    result = await db.execute(select(Pipeline).where(Pipeline.project_id == project.id))
+    for pipeline in result.scalars().all():
+        if pipeline.status in (PipelineStatus.RUNNING, PipelineStatus.PENDING):
+            await _cancel_via_workflow(pipeline.id)
+    # ProjectMemory uses project_id as PK — delete explicitly before project (ORM sync issue).
+    memory = await db.get(ProjectMemory, project.id)
+    if memory is not None:
+        await db.delete(memory)
+        await db.flush()
+    await db.execute(sa_delete(Project).where(Project.id == project.id))
+    await db.flush()
+    return Response(status_code=204)
 
 
 @router.get("/{project_id}/recommendations", response_model=ContentRecommendationReportResponse)

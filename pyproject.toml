@@ -19,6 +19,8 @@ pythonpath = [
     "packages/analytics-ai/src",
     "packages/plugins-core/src",
     "packages/content-sources/src",
+    "packages/growth/src",
+    "packages/autopilot/src",
     "packages/database/src",
     "packages/storage/src",
     "packages/intelligence/src",

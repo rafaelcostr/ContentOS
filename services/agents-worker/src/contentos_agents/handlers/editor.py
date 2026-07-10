@@ -14,6 +14,7 @@ from contentos_shared.providers.ffmpeg_filters import RenderSpec, SceneSegment
 from contentos_shared.providers.ffmpeg_provider import FFmpegProvider
 from contentos_shared.schemas.agent import AgentTaskInput, AgentTaskOutput
 from contentos_shared.schemas.asset import AssetMeta, AssetRef
+from contentos_storage.application.asset_pipeline_service import AssetPipelineService
 
 
 class EditorAgentHandler(BaseAgentHandler):
@@ -27,8 +28,9 @@ class EditorAgentHandler(BaseAgentHandler):
         script = task_input.payload.get("script", {})
         scenes = task_input.payload.get("scenes", [])
         clips = task_input.payload.get("clips", [])
+        min_duration = float(os.getenv("MIN_VIDEO_DURATION_SECONDS", "30"))
         total_duration = float(script.get("duration_seconds", 45))
-        total_duration = min(max(total_duration, 10), 60)
+        total_duration = min(max(total_duration, min_duration), 60)
 
         audio_data = task_input.payload.get("audio_ref", {})
         subtitle_data = task_input.payload.get("subtitle_ref", {})
@@ -83,6 +85,13 @@ class EditorAgentHandler(BaseAgentHandler):
                 director_plan,
                 cinematic,
             )
+            actual_duration = sum(segment.duration for segment in scene_segments)
+            if scene_segments and actual_duration < min_duration:
+                extra = min_duration - actual_duration
+                scene_segments[-1].duration += extra
+                logs.append(f"Extended final scene by {extra:.1f}s to respect minimum duration")
+            total_duration = max(total_duration, sum(segment.duration for segment in scene_segments))
+
             placeholder_scene_labels = [segment.label for segment in scene_segments if segment.clip_path is None]
             real_clip_count = len(scene_segments) - len(placeholder_scene_labels)
             if placeholder_scene_labels:
@@ -138,7 +147,7 @@ class EditorAgentHandler(BaseAgentHandler):
             duration = float(probe.get("format", {}).get("duration", total_duration))
             logs.append(f"Render complete: {len(render_bytes)} bytes, {duration:.1f}s")
 
-        render_ref = await am.store(
+        persisted = await AssetPipelineService(am).store_and_persist(
             AssetCategory.RENDERS,
             render_bytes,
             AssetMeta(
@@ -147,7 +156,21 @@ class EditorAgentHandler(BaseAgentHandler):
                 filename="final.mp4",
                 content_type="video/mp4",
             ),
+            extra_tags=["render", "final", f"pipeline:{task_input.pipeline_id}"],
+            metadata={
+                "topic": task_input.payload.get("topic") or script.get("title"),
+                "duration_seconds": duration,
+                "width": 1080,
+                "height": 1920,
+                "fps": 60,
+                "scene_count": len(scene_segments),
+            },
         )
+        render_ref = persisted.ref
+        if persisted.deduplicated:
+            logs.append(f"Render deduplicated: {render_ref.key}")
+        else:
+            logs.append(f"Render indexed: {render_ref.key}")
 
         return AgentTaskOutput(
             job_id=task_input.job_id,
