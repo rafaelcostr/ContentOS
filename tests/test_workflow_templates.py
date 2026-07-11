@@ -29,7 +29,7 @@ def test_v2_full_enables_async_features():
     tpl = get_builtin("v2-full")
     assert tpl is not None
     cfg = tpl["config"]
-    assert cfg["enable_clip_pipeline"] is True
+    assert "enable_clip_pipeline" not in cfg
     assert cfg["enable_thumbnail"] is True
     assert cfg["enable_analytics_ai"] is True
 
@@ -56,8 +56,10 @@ def test_list_builtin_names():
 def test_v2_dynamic_has_asset_search_step():
     tpl = get_builtin("v2-dynamic")
     assert tpl is not None
-    assert len(tpl["steps"]) == 16
-    assert tpl["steps"][3] == "clip_research"
+    assert len(tpl["steps"]) == 14
+    assert tpl["steps"][3] == "asset_index"
+    assert "clip_research" not in tpl["steps"]
+    assert "asset_collector" not in tpl["steps"]
     assert "asset_search" in tpl["steps"]
     assert tpl["steps"][-1] == "analytics"
 
@@ -65,7 +67,7 @@ def test_v2_dynamic_has_asset_search_step():
 def test_factory_full_has_executable_assembly_line():
     tpl = get_builtin("factory-full")
     assert tpl is not None
-    assert len(tpl["steps"]) == 31
+    assert len(tpl["steps"]) == 29
     assert tpl["steps"][:5] == ["research", "trend_intelligence", "hook", "script", "script_review"]
     assert tpl["steps"][-10:] == [
         "auto_retry",
@@ -79,6 +81,8 @@ def test_factory_full_has_executable_assembly_line():
         "seo",
         "publisher",
     ]
+    assert "clip_research" not in tpl["steps"]
+    assert "asset_collector" not in tpl["steps"]
     assert tpl["steps"].index("asset_search") + 1 == tpl["steps"].index("takes")
     assert tpl["steps"].index("video_review") + 1 == tpl["steps"].index("auto_retry")
     assert tpl["steps"].index("auto_retry") + 1 == tpl["steps"].index("content_score")
@@ -86,26 +90,28 @@ def test_factory_full_has_executable_assembly_line():
     assert tpl["config"]["enable_content_score"] is True
     assert tpl["config"]["enable_learning"] is True
     assert tpl["config"]["enable_knowledge_base"] is True
-    assert tpl["config"]["enable_clip_pipeline"] is True
+    assert "enable_clip_pipeline" not in tpl["config"]
 
 
 def test_v5_media_autopilot_is_lean_media_pipeline():
     tpl = get_builtin("v5-media-autopilot")
     assert tpl is not None
-    assert len(tpl["steps"]) == 18
+    assert len(tpl["steps"]) == 16
     assert tpl["steps"] == [s.value for s in PipelineStep.v5_media_autopilot_ordered()]
-    assert tpl["steps"][3] == "clip_research"
+    assert tpl["steps"][3] == "asset_index"
+    assert "clip_research" not in tpl["steps"]
+    assert "asset_collector" not in tpl["steps"]
     assert tpl["steps"].index("media_analyze") == tpl["steps"].index("asset_index") + 1
     assert tpl["steps"].index("asset_search") + 1 == tpl["steps"].index("takes")
     assert tpl["steps"][-1] == "publisher"
     assert "thumbnail" not in tpl["steps"]
     assert "analytics" not in tpl["steps"]
     cfg = tpl["config"]
-    assert cfg["enable_clip_pipeline"] is True
+    assert "enable_clip_pipeline" not in cfg
     assert cfg["enable_media_analyze"] is True
     assert cfg["enable_take_recommendation"] is True
     assert cfg["enable_v5_media_autopilot"] is True
-    assert "pexels" in cfg["content_sources"]
+    assert cfg["content_sources"] == ["own_library", "local_library"]
 
 
 def test_default_workflow_from_env(monkeypatch):

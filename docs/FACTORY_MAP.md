@@ -41,35 +41,34 @@ A tabela técnica única (handler, fila, evento, dependência) está em [`docs/F
 | 8 | Scene Planner | Criação | Pronto | `scene` | Scene handler |
 | 9 | Storyboard AI | Criação | Pronto | `storyboard` | Storyboard handler |
 | 10 | Scene Director | Criação | Pronto | `scene_director` | Scene director handler |
-| 11 | Clip Research | Assets | Parcial | `clip_research` | Descoberta de termos e necessidades de mídia |
-| 12 | Asset Collector | Assets | Parcial | `asset_collector` | Fontes autorizadas, download permitido e deduplicação |
-| 13 | Asset Manager | Assets | Pronto | `asset_index` | Storage, tags e índice |
-| 14 | Media Analyze | Assets | Pronto | `media_analyze` | Media profiles, visão e metadados técnicos |
-| 15 | Asset Search | Assets | Pronto | `asset_search` | Busca/ranking semântico de assets |
-| 16 | Takes Manager | Assets | Pronto | `takes` | Seleção dos melhores takes |
-| 17 | Voice Agent | Produção | Pronto | `voice` | Narração |
-| 18 | Subtitle Agent | Produção | Pronto | `subtitle` | Legendas |
-| 19 | Editor AI | Produção | Pronto | `editor` | FFmpeg, cortes, efeitos e render |
-| 20 | Thumbnail AI | Produção | Parcial | `thumbnail` | Thumbnail handler |
-| 21 | Quality AI | Qualidade | Pronto | `quality` | QA técnico |
-| 22 | Retention Engine | Qualidade | Pronto | `retention` | Análise segundo a segundo e plano de retry |
-| 23 | Video Reviewer | Qualidade | Pronto | `video_review` | Revisão criativa simulada |
-| 24 | Auto Retry | Qualidade | Pronto | `auto_retry` | Retry com política no workflow engine |
-| 25 | Content Score | Qualidade | Pronto | `content_score` | Nota geral do conteúdo |
-| 26 | AI Director | Qualidade | Pronto | `ai_director` | Plano de correção parcial |
-| 27 | Viral Intelligence | Inteligência | Pronto | `content_intelligence` | Potencial viral e recomendações |
-| 28 | Learning Engine | Inteligência | Pronto | `learning` | Aprendizado do resultado |
-| 29 | Knowledge Base | Inteligência | Pronto | `knowledge_base` | Indexação de conhecimento |
-| 30 | Creative Memory | Inteligência | Pronto | `creative_memory` | Contexto criativo consolidado |
-| 31 | Analytics | Inteligência | Pronto | `analytics` | Métricas e relatórios |
-| 32 | SEO Engine | Publicação | Pronto | `seo` | Metadados por plataforma |
-| 33 | Publisher | Publicação | Parcial | `publisher` | Dry-run, plugins, OAuth e publicação |
-| 34 | Dashboard | Dashboard | Pronto | - | `apps/dashboard` |
+| 11 | Media Collector (externo) | Assets | Planejado | — | Download externo fora do ContentOS → upload takes |
+| 12 | Asset Manager | Assets | Pronto | `asset_index` | Storage, tags e índice |
+| 13 | Media Analyze | Assets | Pronto | `media_analyze` | Media profiles, visão e metadados técnicos |
+| 14 | Asset Search | Assets | Pronto | `asset_search` | Busca/ranking semântico de assets |
+| 15 | Takes Manager | Assets | Pronto | `takes` | Seleção dos melhores takes |
+| 16 | Voice Agent | Produção | Pronto | `voice` | Narração |
+| 17 | Subtitle Agent | Produção | Pronto | `subtitle` | Legendas |
+| 18 | Editor AI | Produção | Pronto | `editor` | FFmpeg, cortes, efeitos e render |
+| 19 | Thumbnail AI | Produção | Parcial | `thumbnail` | Thumbnail handler |
+| 20 | Quality AI | Qualidade | Pronto | `quality` | QA técnico |
+| 21 | Retention Engine | Qualidade | Pronto | `retention` | Análise segundo a segundo e plano de retry |
+| 22 | Video Reviewer | Qualidade | Pronto | `video_review` | Revisão criativa simulada |
+| 23 | Auto Retry | Qualidade | Pronto | `auto_retry` | Retry com política no workflow engine |
+| 24 | Content Score | Qualidade | Pronto | `content_score` | Nota geral do conteúdo |
+| 25 | AI Director | Qualidade | Pronto | `ai_director` | Plano de correção parcial |
+| 26 | Viral Intelligence | Inteligência | Pronto | `content_intelligence` | Potencial viral e recomendações |
+| 27 | Learning Engine | Inteligência | Pronto | `learning` | Aprendizado do resultado |
+| 28 | Knowledge Base | Inteligência | Pronto | `knowledge_base` | Indexação de conhecimento |
+| 29 | Creative Memory | Inteligência | Pronto | `creative_memory` | Contexto criativo consolidado |
+| 30 | Analytics | Inteligência | Pronto | `analytics` | Métricas e relatórios |
+| 31 | SEO Engine | Publicação | Pronto | `seo` | Metadados por plataforma |
+| 32 | Publisher | Publicação | Parcial | `publisher` | Dry-run, plugins, OAuth e publicação |
+| 33 | Dashboard | Dashboard | Pronto | - | `apps/dashboard` |
 
 ## Ordem Executável do `factory-full`
 
 ```text
-research -> trend_intelligence -> hook -> script -> script_review -> scene -> storyboard -> scene_director -> clip_research -> asset_collector -> asset_index -> media_analyze -> asset_search -> takes -> voice -> subtitle -> editor -> thumbnail -> quality -> retention -> video_review -> auto_retry -> content_score -> ai_director -> content_intelligence -> learning -> knowledge_base -> creative_memory -> analytics -> seo -> publisher
+research -> trend_intelligence -> hook -> script -> script_review -> scene -> storyboard -> scene_director -> asset_index -> media_analyze -> asset_search -> takes -> voice -> subtitle -> editor -> thumbnail -> quality -> retention -> video_review -> auto_retry -> content_score -> ai_director -> content_intelligence -> learning -> knowledge_base -> creative_memory -> analytics -> seo -> publisher
 ```
 
 ## Estados
@@ -82,16 +81,15 @@ research -> trend_intelligence -> hook -> script -> script_review -> scene -> st
 
 | Etapa | Motivo |
 |---|---|
-| `clip_research` | Depende de qualidade das fontes, termos e regras de mídia por nicho |
-| `asset_collector` | Depende de chaves, limites, licenças e disponibilidade de mídia suficiente |
+| `media_collector` | Aquisição externa fora do ContentOS (programa Media Collector) |
 | `thumbnail` | Precisa validação visual e política de qualidade mais forte |
 | `publisher` | Dry-run por padrão; publicação real depende de OAuth, escopos e upload final por plataforma |
 
 ## Contratos de Manutenção
 
-- `tests/test_factory_map.py` garante que o mapa descritivo tenha as mesmas 31 etapas de `PipelineStep.factory_full_ordered()`.
+- `tests/test_factory_map.py` garante que o mapa descritivo tenha as mesmas 29 etapas de `PipelineStep.factory_full_ordered()`.
 - `tests/test_factory_truth_table.py` + [`FACTORY_TRUTH_TABLE.md`](FACTORY_TRUTH_TABLE.md) cobrem handler, fila, evento e dependência externa.
-- O dashboard deve exibir `factory-full` como linha de montagem de 31 steps.
+- O dashboard deve exibir `factory-full` como linha de montagem de 29 steps.
 - Novas etapas devem ser incluídas em `PipelineStep`, `factory_map.py`, handlers, filas, eventos e testes antes de aparecerem na UI.
 
 ## Próximas Fases

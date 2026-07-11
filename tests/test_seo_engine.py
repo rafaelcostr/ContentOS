@@ -46,14 +46,14 @@ def test_extract_seo_prefers_seo_package():
 
 def test_v5_autopilot_includes_seo_step():
     steps = PipelineStep.v5_media_autopilot_ordered()
-    assert len(steps) == 18
+    assert len(steps) == 16
     assert steps.index(PipelineStep.SEO) + 1 == steps.index(PipelineStep.CREATIVE_MEMORY)
     assert steps.index(PipelineStep.CREATIVE_MEMORY) + 1 == steps.index(PipelineStep.PUBLISHER)
 
 
 def test_factory_full_includes_seo_before_publisher():
     steps = PipelineStep.factory_full_ordered()
-    assert len(steps) == 31
+    assert len(steps) == 29
     assert steps.index(PipelineStep.SEO) + 1 == steps.index(PipelineStep.PUBLISHER)
     assert steps.index(PipelineStep.SEO) > steps.index(PipelineStep.ANALYTICS)
 

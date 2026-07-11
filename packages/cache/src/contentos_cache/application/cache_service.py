@@ -15,7 +15,6 @@ AGENT_TTL_SECONDS: dict[str, int] = {
     "script": 24 * 3600,
     "scene": 24 * 3600,
     "publisher": 24 * 3600,
-    "clip_research": 7 * 24 * 3600,
     "analytics": 24 * 3600,
     "thumbnail": 24 * 3600,
 }

@@ -79,7 +79,7 @@ spec:
             - -l
             - info
             - -Q
-            - contentos.clip_research,contentos.asset_collector,contentos.asset_index,contentos.media_analyze,contentos.asset_search
+            - contentos.asset_index,contentos.media_analyze,contentos.asset_search
             - -c
             - "2"
           envFrom:

@@ -11,9 +11,17 @@ from datetime import datetime, timedelta, timezone
 from hashlib import sha1
 from typing import Any
 
+from contentos_autopilot.cost import build_cost_decision_score
+from contentos_autopilot.creative import build_creative_direction_brief
+from contentos_autopilot.media import build_media_strategy_plan
+
 from contentos_growth.application.channel_intelligence import ChannelIntelligenceSnapshot
 from contentos_growth.domain import GrowthStrategy
-from contentos_growth.platform_registry import default_content_type, get_platform_profile, normalize_platform_id
+from contentos_growth.platform_registry import (
+    default_content_type,
+    get_platform_profile,
+    normalize_platform_id,
+)
 
 
 @dataclass(frozen=True)
@@ -261,6 +269,30 @@ def build_autonomous_calendar_plan(
             content_type = default_content_type(snapshot.platform, index)
             planned = _planned_datetime(start, index, max(target, 1), hours, horizon_days)
             title = topic[:120]
+            media_strategy = build_media_strategy_plan(
+                topic=topic,
+                platform=snapshot.platform,
+                content_type=content_type,
+                channel_twin={
+                    "identity": {"niche": snapshot.niche, "audience": snapshot.audience},
+                    "brand_dna": {"content_patterns": snapshot.content_patterns},
+                },
+                assets_available=len((snapshot.historical_videos or {}).get("winning_videos") or []),
+            )
+            creative_brief = build_creative_direction_brief(
+                topic=topic,
+                objective=_objective_metadata(topic, snapshot, strategy).get("objective_title", topic),
+                platform=snapshot.platform,
+                content_type=content_type,
+                brand_dna={
+                    "brand_identity": snapshot.brand_identity,
+                    "visual_identity": snapshot.visual_identity,
+                    "content_patterns": snapshot.content_patterns,
+                },
+                audience={"description": snapshot.audience},
+                media_strategy=media_strategy,
+            )
+            cost_decision = build_cost_decision_score(quantity=1, media_strategy=media_strategy)
             proposed.append(
                 AutonomousCalendarSlot(
                     channel_id=snapshot.channel_id,
@@ -275,6 +307,9 @@ def build_autonomous_calendar_plan(
                         "intelligence_confidence": snapshot.confidence,
                         "intelligence_score": snapshot.score,
                         "autopilot_mode": mode,
+                        "media_strategy": media_strategy.to_dict(),
+                        "creative_direction": creative_brief.to_dict(),
+                        "cost_decision": cost_decision.to_dict(),
                         **_objective_metadata(topic, snapshot, strategy),
                     },
                 )

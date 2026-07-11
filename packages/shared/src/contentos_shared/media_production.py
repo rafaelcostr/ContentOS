@@ -34,7 +34,7 @@ def require_media_assets() -> bool:
 
 def require_clip_coverage() -> bool:
 
-    """When true, takes/asset_collector must cover every scene with real media."""
+    """When true, takes must cover every scene with real media."""
 
     raw = os.getenv("MEDIA_REQUIRE_CLIPS") or os.getenv("MEDIA_REQUIRE_ASSETS")
 

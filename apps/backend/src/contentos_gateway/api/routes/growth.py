@@ -7,21 +7,41 @@ from uuid import UUID
 
 import httpx
 from contentos_autopilot.adapters.growth import GrowthChannelTwinProvider, GrowthMarketIntelligenceProvider
+from contentos_autopilot.cost import build_cost_decision_score
+from contentos_autopilot.resources import build_resource_readiness
+from contentos_autopilot.temporal import build_closed_loop_cycle_policy
+from contentos_autopilot.visual import build_visual_pattern_snapshot
 from contentos_database.billing_credits import InsufficientCreditsError, billing_enforced, pipeline_credit_cost
-from contentos_database.models import Channel, Pipeline, User
-from contentos_database.quota_service import QuotaExceededError, assert_can_start_pipeline, quotas_enforced
+from contentos_database.models import AssetMediaProfile, Channel, Pipeline, User
+from contentos_database.quota_service import (
+    QuotaExceededError,
+    assert_can_start_pipeline,
+    get_quota_status,
+    is_unlimited,
+    quotas_enforced,
+)
 from contentos_database.session import get_session
 from contentos_gateway.api.deps import get_current_user, require_editor
 from contentos_gateway.config import settings
 from contentos_gateway.services.billing_service import consume_pipeline_credit, ensure_org_billing, get_org_billing
+from contentos_gateway.services.metrics_collector import collect_celery_queues, collect_system_metrics
 from contentos_gateway.services.org_service import get_accessible_project
 from contentos_growth import GrowthService
 from contentos_growth.application.growth_hardening import classify_growth_error, summarize_oauth_audit
 from contentos_growth.application.growth_readiness import build_growth_readiness
 from contentos_growth.application.post_manager import is_text_content_type
+from contentos_growth.application.social_approval_queue import build_social_approval_queue
+from contentos_growth.application.social_autopilot import build_social_autopilot_plan
+from contentos_growth.application.social_dispatcher import build_social_dispatch_plan
+from contentos_growth.application.social_learning import build_social_learning_report
+from contentos_growth.application.social_observability import build_social_observability_report
+from contentos_growth.domain import GrowthRecommendation
 from contentos_growth.infrastructure.growth_rate_limiter import assert_growth_rate_limit
 from contentos_growth.infrastructure.sqlalchemy_repository import SqlAlchemyGrowthRepository
 from contentos_growth.platform_registry import list_growth_platforms
+from contentos_intelligence.application.comment_analyzer import list_comment_insights
+from contentos_intelligence.application.community_agent import list_community_drafts
+from contentos_intelligence.application.community_intelligence import build_community_intelligence_report
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select
@@ -104,6 +124,117 @@ class GrowthClosedLoopResponse(BaseModel):
     memory_updates: list[dict] = Field(default_factory=list)
     next_cycle: dict = Field(default_factory=dict)
     blockers: list[str] = Field(default_factory=list)
+    generated_at: str = ""
+
+
+
+class ResourceReadinessResponse(BaseModel):
+    status: str
+    score: int
+    execution_window: str
+    summary: str
+    cpu_percent: float = 0.0
+    memory_percent: float = 0.0
+    disk_percent: float = 0.0
+    gpu_available: bool = False
+    gpu_utilization: float | None = None
+    queue_pending: int = 0
+    workers: int = 0
+    blockers: list[str] = Field(default_factory=list)
+    recommendations: list[str] = Field(default_factory=list)
+    guardrails: list[str] = Field(default_factory=list)
+    generated_at: str = ""
+
+
+class ClosedLoopTemporalResponse(BaseModel):
+    project_id: str
+    status: str
+    summary: str
+    cycles: list[dict] = Field(default_factory=list)
+    objective_comparison: dict = Field(default_factory=dict)
+    versioned_recommendations: list[dict] = Field(default_factory=list)
+    memory_update_proposals: list[dict] = Field(default_factory=list)
+    scheduler_contract: dict = Field(default_factory=dict)
+    guardrails: list[str] = Field(default_factory=list)
+    generated_at: str = ""
+    recommendations_saved: int = 0
+
+
+class SocialAutopilotPlanResponse(BaseModel):
+    project_id: str
+    mode: str
+    status: str
+    summary: str
+    operations: list[dict] = Field(default_factory=list)
+    blocked_operations: list[dict] = Field(default_factory=list)
+    publisher_contract: dict = Field(default_factory=dict)
+    scheduler_contract: dict = Field(default_factory=dict)
+    governance_contract: dict = Field(default_factory=dict)
+    audit_log: list[dict] = Field(default_factory=list)
+    guardrails: list[str] = Field(default_factory=list)
+    generated_at: str = ""
+
+
+class SocialApprovalQueueResponse(BaseModel):
+    project_id: str
+    status: str
+    summary: str
+    items: list[dict] = Field(default_factory=list)
+    publisher_contract: dict = Field(default_factory=dict)
+    scheduler_contract: dict = Field(default_factory=dict)
+    generated_at: str = ""
+
+class SocialDispatchPlanResponse(BaseModel):
+    project_id: str
+    status: str
+    summary: str
+    commands: list[dict] = Field(default_factory=list)
+    skipped_items: list[dict] = Field(default_factory=list)
+    execution_contract: dict = Field(default_factory=dict)
+    generated_at: str = ""
+
+class SocialObservabilityResponse(BaseModel):
+    project_id: str
+    status: str
+    readiness_score: int
+    summary: str
+    counts: dict = Field(default_factory=dict)
+    manual_actions: list[str] = Field(default_factory=list)
+    risks: list[str] = Field(default_factory=list)
+    lifecycle: dict = Field(default_factory=dict)
+    audit_events: list[dict] = Field(default_factory=list)
+    generated_at: str = ""
+
+class SocialLearningResponse(BaseModel):
+    project_id: str
+    status: str
+    score: int
+    summary: str
+    learned: list[str] = Field(default_factory=list)
+    recommendations: list[dict] = Field(default_factory=list)
+    memory_candidates: list[dict] = Field(default_factory=list)
+    next_cycle: dict = Field(default_factory=dict)
+    blockers: list[str] = Field(default_factory=list)
+    generated_at: str = ""
+class CostDecisionResponse(BaseModel):
+    status: str
+    mode: str
+    quantity: int
+    credit_cost_per_pipeline: int
+    total_credit_cost: int
+    credits_balance: int | None = None
+    credits_ok: bool
+    monthly_quota: int
+    monthly_used: int
+    monthly_remaining: int | None = None
+    concurrent_limit: int
+    concurrent_active: int
+    quota_ok: bool
+    cost_score: int
+    estimated_ai_cost_units: int
+    recommendations: list[str] = Field(default_factory=list)
+    blockers: list[str] = Field(default_factory=list)
+    guardrails: list[str] = Field(default_factory=list)
     generated_at: str = ""
 
 
@@ -231,6 +362,28 @@ class ChannelTwinResponse(BaseModel):
     risks: list[str] = Field(default_factory=list)
     opportunities: list[str] = Field(default_factory=list)
     next_actions: list[str] = Field(default_factory=list)
+    generated_at: str = ""
+
+
+class VisualPatternResponse(BaseModel):
+    project_id: str
+    channel_id: str | None = None
+    confidence: str
+    score: int
+    summary: str
+    sample_size: int = 0
+    pacing: str = "medium"
+    movements: list[str] = Field(default_factory=list)
+    transitions: list[str] = Field(default_factory=list)
+    colors: list[str] = Field(default_factory=list)
+    scenarios: list[str] = Field(default_factory=list)
+    framings: list[str] = Field(default_factory=list)
+    emotions: list[str] = Field(default_factory=list)
+    typography: dict = Field(default_factory=dict)
+    subtitle_style: dict = Field(default_factory=dict)
+    editor_hints: dict = Field(default_factory=dict)
+    creative_hints: list[str] = Field(default_factory=list)
+    risks: list[str] = Field(default_factory=list)
     generated_at: str = ""
 
 
@@ -710,6 +863,45 @@ async def get_channel_twin(
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     return ChannelTwinResponse(**twin.to_dict())
+
+
+@router.get("/channels/{channel_id}/visual-intelligence", response_model=VisualPatternResponse)
+async def get_channel_visual_intelligence(
+    channel_id: UUID,
+    limit: int = Query(default=50, ge=1, le=200),
+    db: AsyncSession = Depends(get_session),
+    user: User = Depends(get_current_user),
+) -> VisualPatternResponse:
+    channel = await db.get(Channel, channel_id)
+    if not channel:
+        raise HTTPException(status_code=404, detail="Channel not found")
+    await get_accessible_project(db, channel.project_id, user.id)
+
+    workspace = await _growth_service(db).get_channel_workspace(db, channel_id, horizon_days=30)
+    asset_ids = [
+        item.get("asset_id")
+        for item in workspace.to_dict().get("assets") or []
+        if item.get("asset_id")
+    ]
+    query = select(AssetMediaProfile).where(AssetMediaProfile.project_id == channel.project_id)
+    if asset_ids:
+        query = query.where(AssetMediaProfile.asset_id.in_([UUID(str(asset_id)) for asset_id in asset_ids]))
+    result = await db.execute(query.order_by(AssetMediaProfile.updated_at.desc()).limit(limit))
+    profiles = [
+        {
+            "asset_id": str(row.asset_id),
+            "analysis": row.analysis or {},
+            "vision_model": row.vision_model,
+            "updated_at": row.updated_at.isoformat() if row.updated_at else None,
+        }
+        for row in result.scalars().all()
+    ]
+    snapshot = build_visual_pattern_snapshot(
+        project_id=str(channel.project_id),
+        channel_id=str(channel_id),
+        media_profiles=profiles,
+    )
+    return VisualPatternResponse(**snapshot.to_dict())
 
 
 def _competitor_response_from_dict(data: dict) -> GrowthCompetitorResponse:
@@ -1714,6 +1906,503 @@ async def sync_growth_closed_loop(
     return GrowthClosedLoopResponse(**report.to_dict())
 
 
+
+async def _build_temporal_closed_loop_policy(
+    db: AsyncSession,
+    project_id: UUID,
+    *,
+    published_at: str | None,
+    sync_performance: bool,
+    save_recommendations: bool,
+    mode: str,
+    horizon_days: int,
+    max_actions: int,
+    timezone: str,
+    workflow_name: str | None,
+    persist_report: bool,
+) -> tuple[dict, int]:
+    service = _growth_service(db)
+    before_count = len(await service.list_recommendations(project_id))
+    closed_loop = await service.build_closed_loop_report(
+        db,
+        project_id,
+        sync_performance=sync_performance,
+        save_recommendations=save_recommendations,
+        mode=mode,
+        horizon_days=horizon_days,
+        max_actions=max_actions,
+        timezone=timezone,
+        workflow_name=workflow_name,
+        persist_report=persist_report,
+    )
+    strategy = await service.get_strategy(project_id)
+    objectives = {"nodes": []}
+    if strategy and strategy.goals:
+        objectives = {
+            "nodes": [
+                {"id": f"strategy-goal-{index}", "title": goal, "level": "project"}
+                for index, goal in enumerate(strategy.goals, start=1)
+            ]
+        }
+    policy = build_closed_loop_cycle_policy(
+        project_id=str(project_id),
+        published_at=published_at,
+        closed_loop_report=closed_loop.to_dict(),
+        objectives=objectives,
+        recommendations_version=before_count + 1,
+    )
+    saved = 0
+    if save_recommendations and persist_report and policy.versioned_recommendations:
+        saved = await service.save_recommendations(
+            project_id,
+            [
+                GrowthRecommendation(
+                    id=None,
+                    project_id=str(project_id),
+                    channel_id=item.get("channel_id"),
+                    kind=str(item.get("kind") or "closed_learning"),
+                    title=str(item.get("title") or "Closed Learning Temporal"),
+                    detail=str(item.get("detail") or ""),
+                    priority=str(item.get("priority") or "medium"),
+                    source=str(item.get("source") or "closed_learning_temporal"),
+                    status=str(item.get("status") or "open"),
+                    created_at=None,
+                )
+                for item in policy.versioned_recommendations
+            ],
+        )
+    return policy.to_dict(), saved
+
+
+@router.get("/autopilot/closed-loop/temporal", response_model=ClosedLoopTemporalResponse)
+async def get_growth_closed_loop_temporal(
+    project_id: UUID,
+    published_at: str | None = Query(default=None),
+    mode: str = Query(default="assisted", pattern="^(manual|assisted|automatic|auto|assistido)$"),
+    horizon_days: int = Query(default=7, ge=1, le=30),
+    max_actions: int = Query(default=5, ge=1, le=20),
+    timezone: str = Query(default="UTC"),
+    workflow_name: str | None = Query(default=None),
+    db: AsyncSession = Depends(get_session),
+    user: User = Depends(get_current_user),
+) -> ClosedLoopTemporalResponse:
+    await get_accessible_project(db, project_id, user.id)
+    data, saved = await _build_temporal_closed_loop_policy(
+        db,
+        project_id,
+        published_at=published_at,
+        sync_performance=False,
+        save_recommendations=False,
+        mode=mode,
+        horizon_days=horizon_days,
+        max_actions=max_actions,
+        timezone=timezone,
+        workflow_name=workflow_name,
+        persist_report=False,
+    )
+    return ClosedLoopTemporalResponse(**data, recommendations_saved=saved)
+
+
+@router.post("/autopilot/closed-loop/temporal/sync", response_model=ClosedLoopTemporalResponse)
+async def sync_growth_closed_loop_temporal(
+    project_id: UUID,
+    published_at: str | None = Query(default=None),
+    sync_performance: bool = Query(default=True),
+    save_recommendations: bool = Query(default=True),
+    mode: str = Query(default="assisted", pattern="^(manual|assisted|automatic|auto|assistido)$"),
+    horizon_days: int = Query(default=7, ge=1, le=30),
+    max_actions: int = Query(default=5, ge=1, le=20),
+    timezone: str = Query(default="UTC"),
+    workflow_name: str | None = Query(default=None),
+    db: AsyncSession = Depends(get_session),
+    user: User = Depends(require_editor()),
+) -> ClosedLoopTemporalResponse:
+    await _enforce_growth_rate_limit(user, "closed_loop_temporal_sync")
+    await get_accessible_project(db, project_id, user.id)
+    data, saved = await _build_temporal_closed_loop_policy(
+        db,
+        project_id,
+        published_at=published_at,
+        sync_performance=sync_performance,
+        save_recommendations=save_recommendations,
+        mode=mode,
+        horizon_days=horizon_days,
+        max_actions=max_actions,
+        timezone=timezone,
+        workflow_name=workflow_name,
+        persist_report=True,
+    )
+    await db.commit()
+    return ClosedLoopTemporalResponse(**data, recommendations_saved=saved)
+
+
+@router.get("/social-autopilot/plan", response_model=SocialAutopilotPlanResponse)
+async def get_growth_social_autopilot_plan(
+    project_id: UUID,
+    mode: str = Query(default="assisted", pattern="^(assisted|automatic|live|auto|assistido)$"),
+    publish_authorized: bool = Query(default=False),
+    horizon_days: int = Query(default=30, ge=1, le=90),
+    max_operations: int = Query(default=8, ge=1, le=30),
+    include_community: bool = Query(default=True),
+    db: AsyncSession = Depends(get_session),
+    user: User = Depends(get_current_user),
+) -> SocialAutopilotPlanResponse:
+    await get_accessible_project(db, project_id, user.id)
+    service = _growth_service(db)
+    report = await service.build_report(db, project_id, persist=False)
+    calendar = await service.get_content_calendar(project_id, horizon_days=horizon_days)
+    performance = await service.interpret_performance(db, project_id)
+    community_signals: dict = {}
+    if include_community:
+        try:
+            comment_rows = await list_comment_insights(db, project_id, limit=50)
+            draft_rows = await list_community_drafts(db, project_id, limit=50)
+            community_signals = build_community_intelligence_report(
+                project_id=str(project_id),
+                comment_insights=comment_rows,
+                community_drafts=draft_rows,
+            ).to_dict()
+        except Exception:
+            community_signals = {}
+    plan = build_social_autopilot_plan(
+        project_id=str(project_id),
+        channels=[channel.to_dict() for channel in report.channels],
+        calendar_items=calendar,
+        performance_rows=performance.top_assets,
+        community_signals=community_signals,
+        mode=mode,
+        publish_authorized=publish_authorized,
+        max_operations=max_operations,
+        actor_id=str(user.id),
+    )
+    return SocialAutopilotPlanResponse(**plan.to_dict())
+
+
+@router.get("/social-autopilot/approval-queue", response_model=SocialApprovalQueueResponse)
+async def get_growth_social_approval_queue(
+    project_id: UUID,
+    mode: str = Query(default="assisted", pattern="^(assisted|automatic|live|auto|assistido)$"),
+    publish_authorized: bool = Query(default=False),
+    horizon_days: int = Query(default=30, ge=1, le=90),
+    max_operations: int = Query(default=8, ge=1, le=30),
+    include_community: bool = Query(default=True),
+    db: AsyncSession = Depends(get_session),
+    user: User = Depends(get_current_user),
+) -> SocialApprovalQueueResponse:
+    await get_accessible_project(db, project_id, user.id)
+    service = _growth_service(db)
+    report = await service.build_report(db, project_id, persist=False)
+    calendar = await service.get_content_calendar(project_id, horizon_days=horizon_days)
+    performance = await service.interpret_performance(db, project_id)
+    community_signals: dict = {}
+    if include_community:
+        try:
+            comment_rows = await list_comment_insights(db, project_id, limit=50)
+            draft_rows = await list_community_drafts(db, project_id, limit=50)
+            community_signals = build_community_intelligence_report(
+                project_id=str(project_id),
+                comment_insights=comment_rows,
+                community_drafts=draft_rows,
+            ).to_dict()
+        except Exception:
+            community_signals = {}
+    plan = build_social_autopilot_plan(
+        project_id=str(project_id),
+        channels=[channel.to_dict() for channel in report.channels],
+        calendar_items=calendar,
+        performance_rows=performance.top_assets,
+        community_signals=community_signals,
+        mode=mode,
+        publish_authorized=publish_authorized,
+        max_operations=max_operations,
+        actor_id=str(user.id),
+    )
+    queue = build_social_approval_queue(
+        project_id=str(project_id),
+        operations=[item.to_dict() for item in [*plan.operations, *plan.blocked_operations]],
+        governance_contract=plan.governance_contract,
+        actor_id=str(user.id),
+    )
+    return SocialApprovalQueueResponse(**queue.to_dict())
+
+@router.get("/social-autopilot/dispatch-plan", response_model=SocialDispatchPlanResponse)
+async def get_growth_social_dispatch_plan(
+    project_id: UUID,
+    mode: str = Query(default="assisted", pattern="^(assisted|automatic|live|auto|assistido)$"),
+    publish_authorized: bool = Query(default=False),
+    execute: bool = Query(default=False),
+    allow_review_items: bool = Query(default=False),
+    horizon_days: int = Query(default=30, ge=1, le=90),
+    max_operations: int = Query(default=8, ge=1, le=30),
+    include_community: bool = Query(default=True),
+    db: AsyncSession = Depends(get_session),
+    user: User = Depends(get_current_user),
+) -> SocialDispatchPlanResponse:
+    await get_accessible_project(db, project_id, user.id)
+    service = _growth_service(db)
+    report = await service.build_report(db, project_id, persist=False)
+    calendar = await service.get_content_calendar(project_id, horizon_days=horizon_days)
+    performance = await service.interpret_performance(db, project_id)
+    community_signals: dict = {}
+    if include_community:
+        try:
+            comment_rows = await list_comment_insights(db, project_id, limit=50)
+            draft_rows = await list_community_drafts(db, project_id, limit=50)
+            community_signals = build_community_intelligence_report(
+                project_id=str(project_id),
+                comment_insights=comment_rows,
+                community_drafts=draft_rows,
+            ).to_dict()
+        except Exception:
+            community_signals = {}
+    plan = build_social_autopilot_plan(
+        project_id=str(project_id),
+        channels=[channel.to_dict() for channel in report.channels],
+        calendar_items=calendar,
+        performance_rows=performance.top_assets,
+        community_signals=community_signals,
+        mode=mode,
+        publish_authorized=publish_authorized,
+        max_operations=max_operations,
+        actor_id=str(user.id),
+    )
+    queue = build_social_approval_queue(
+        project_id=str(project_id),
+        operations=[item.to_dict() for item in [*plan.operations, *plan.blocked_operations]],
+        governance_contract=plan.governance_contract,
+        actor_id=str(user.id),
+    )
+    dispatch = build_social_dispatch_plan(
+        project_id=str(project_id),
+        queue_items=[item.to_dict() for item in queue.items],
+        execute=execute,
+        allow_review_items=allow_review_items,
+        actor_id=str(user.id),
+    )
+    return SocialDispatchPlanResponse(**dispatch.to_dict())
+
+@router.get("/social-autopilot/observability", response_model=SocialObservabilityResponse)
+async def get_growth_social_observability(
+    project_id: UUID,
+    mode: str = Query(default="assisted", pattern="^(assisted|automatic|live|auto|assistido)$"),
+    publish_authorized: bool = Query(default=False),
+    execute: bool = Query(default=False),
+    allow_review_items: bool = Query(default=False),
+    horizon_days: int = Query(default=30, ge=1, le=90),
+    max_operations: int = Query(default=8, ge=1, le=30),
+    include_community: bool = Query(default=True),
+    db: AsyncSession = Depends(get_session),
+    user: User = Depends(get_current_user),
+) -> SocialObservabilityResponse:
+    await get_accessible_project(db, project_id, user.id)
+    service = _growth_service(db)
+    report = await service.build_report(db, project_id, persist=False)
+    calendar = await service.get_content_calendar(project_id, horizon_days=horizon_days)
+    performance = await service.interpret_performance(db, project_id)
+    community_signals: dict = {}
+    if include_community:
+        try:
+            comment_rows = await list_comment_insights(db, project_id, limit=50)
+            draft_rows = await list_community_drafts(db, project_id, limit=50)
+            community_signals = build_community_intelligence_report(
+                project_id=str(project_id),
+                comment_insights=comment_rows,
+                community_drafts=draft_rows,
+            ).to_dict()
+        except Exception:
+            community_signals = {}
+    plan = build_social_autopilot_plan(
+        project_id=str(project_id),
+        channels=[channel.to_dict() for channel in report.channels],
+        calendar_items=calendar,
+        performance_rows=performance.top_assets,
+        community_signals=community_signals,
+        mode=mode,
+        publish_authorized=publish_authorized,
+        max_operations=max_operations,
+        actor_id=str(user.id),
+    )
+    queue = build_social_approval_queue(
+        project_id=str(project_id),
+        operations=[item.to_dict() for item in [*plan.operations, *plan.blocked_operations]],
+        governance_contract=plan.governance_contract,
+        actor_id=str(user.id),
+    )
+    dispatch = build_social_dispatch_plan(
+        project_id=str(project_id),
+        queue_items=[item.to_dict() for item in queue.items],
+        execute=execute,
+        allow_review_items=allow_review_items,
+        actor_id=str(user.id),
+    )
+    observability = build_social_observability_report(
+        project_id=str(project_id),
+        plan=plan.to_dict(),
+        queue=queue.to_dict(),
+        dispatch=dispatch.to_dict(),
+    )
+    return SocialObservabilityResponse(**observability.to_dict())
+
+@router.get("/social-autopilot/learning", response_model=SocialLearningResponse)
+async def get_growth_social_learning(
+    project_id: UUID,
+    mode: str = Query(default="assisted", pattern="^(assisted|automatic|live|auto|assistido)$"),
+    publish_authorized: bool = Query(default=False),
+    execute: bool = Query(default=False),
+    allow_review_items: bool = Query(default=False),
+    horizon_days: int = Query(default=30, ge=1, le=90),
+    max_operations: int = Query(default=8, ge=1, le=30),
+    include_community: bool = Query(default=True),
+    db: AsyncSession = Depends(get_session),
+    user: User = Depends(get_current_user),
+) -> SocialLearningResponse:
+    await get_accessible_project(db, project_id, user.id)
+    service = _growth_service(db)
+    report = await service.build_report(db, project_id, persist=False)
+    calendar = await service.get_content_calendar(project_id, horizon_days=horizon_days)
+    performance = await service.interpret_performance(db, project_id)
+    community_signals: dict = {}
+    if include_community:
+        try:
+            comment_rows = await list_comment_insights(db, project_id, limit=50)
+            draft_rows = await list_community_drafts(db, project_id, limit=50)
+            community_signals = build_community_intelligence_report(
+                project_id=str(project_id),
+                comment_insights=comment_rows,
+                community_drafts=draft_rows,
+            ).to_dict()
+        except Exception:
+            community_signals = {}
+    plan = build_social_autopilot_plan(
+        project_id=str(project_id),
+        channels=[channel.to_dict() for channel in report.channels],
+        calendar_items=calendar,
+        performance_rows=performance.top_assets,
+        community_signals=community_signals,
+        mode=mode,
+        publish_authorized=publish_authorized,
+        max_operations=max_operations,
+        actor_id=str(user.id),
+    )
+    queue = build_social_approval_queue(
+        project_id=str(project_id),
+        operations=[item.to_dict() for item in [*plan.operations, *plan.blocked_operations]],
+        governance_contract=plan.governance_contract,
+        actor_id=str(user.id),
+    )
+    dispatch = build_social_dispatch_plan(
+        project_id=str(project_id),
+        queue_items=[item.to_dict() for item in queue.items],
+        execute=execute,
+        allow_review_items=allow_review_items,
+        actor_id=str(user.id),
+    )
+    observability = build_social_observability_report(
+        project_id=str(project_id),
+        plan=plan.to_dict(),
+        queue=queue.to_dict(),
+        dispatch=dispatch.to_dict(),
+    )
+    learning = build_social_learning_report(
+        project_id=str(project_id),
+        observability=observability.to_dict(),
+        performance_rows=performance.top_assets,
+        community_signals=community_signals,
+    )
+    return SocialLearningResponse(**learning.to_dict())
+@router.get("/cost-intelligence", response_model=CostDecisionResponse)
+async def get_growth_cost_intelligence(
+    project_id: UUID,
+    quantity: int = Query(default=1, ge=1, le=50),
+    ai_video_percent: int = Query(default=0, ge=0, le=100),
+    ai_image_percent: int = Query(default=0, ge=0, le=100),
+    db: AsyncSession = Depends(get_session),
+    user: User = Depends(get_current_user),
+) -> CostDecisionResponse:
+    project = await get_accessible_project(db, project_id, user.id)
+    credits_balance: int | None = None
+    monthly_quota = 0
+    monthly_used = 0
+    concurrent_limit = 0
+    concurrent_active = 0
+
+    if project.org_id:
+        billing = await get_org_billing(db, project.org_id)
+        credits_balance = billing.credits_balance if billing_enforced() else None
+        quotas = await get_quota_status(db, project.org_id)
+        monthly_quota = quotas.monthly_pipeline_quota
+        monthly_used = quotas.monthly_pipelines_used
+        concurrent_limit = quotas.max_concurrent_pipelines
+        concurrent_active = quotas.concurrent_pipelines_active
+
+    source_mix: list[dict] = []
+    if ai_video_percent:
+        source_mix.append({"source": "ai_video", "percentage": ai_video_percent})
+    if ai_image_percent:
+        source_mix.append({"source": "ai_image", "percentage": ai_image_percent})
+    remaining = max(0, 100 - ai_video_percent - ai_image_percent)
+    if remaining:
+        source_mix.append({"source": "own_library", "percentage": remaining})
+
+    decision = build_cost_decision_score(
+        quantity=quantity,
+        credit_cost_per_pipeline=pipeline_credit_cost(),
+        credits_balance=credits_balance,
+        monthly_quota=monthly_quota,
+        monthly_used=monthly_used,
+        concurrent_limit=concurrent_limit,
+        concurrent_active=concurrent_active,
+        media_strategy={"source_mix": source_mix},
+    )
+    data = decision.to_dict()
+    if is_unlimited(monthly_quota):
+        data["monthly_remaining"] = None
+    return CostDecisionResponse(**data)
+
+
+
+@router.get("/resource-readiness", response_model=ResourceReadinessResponse)
+async def get_growth_resource_readiness(
+    project_id: UUID,
+    quantity: int = Query(default=1, ge=1, le=50),
+    requires_gpu: bool = Query(default=False),
+    db: AsyncSession = Depends(get_session),
+    user: User = Depends(get_current_user),
+) -> ResourceReadinessResponse:
+    await get_accessible_project(db, project_id, user.id)
+    system = collect_system_metrics()
+    celery = await collect_celery_queues()
+    gpu = system.gpu
+    system_data = {
+        "cpu": {"percent": system.cpu.percent, "cores": system.cpu.cores},
+        "memory": {
+            "used_mb": system.memory.used_mb,
+            "total_mb": system.memory.total_mb,
+            "percent": system.memory.percent,
+        },
+        "disk": {
+            "used_gb": system.disk.used_gb,
+            "total_gb": system.disk.total_gb,
+            "percent": system.disk.percent,
+        },
+        "gpu": {
+            "available": bool(gpu),
+            "name": gpu.name if gpu else "",
+            "utilization": gpu.utilization if gpu else 0.0,
+            "memory_used_mb": gpu.memory_used_mb if gpu else 0.0,
+            "memory_total_mb": gpu.memory_total_mb if gpu else 0.0,
+        }
+        if gpu
+        else None,
+    }
+    readiness = build_resource_readiness(
+        system_metrics=system_data,
+        celery_metrics=celery,
+        requires_gpu=requires_gpu,
+        quantity=quantity,
+    )
+    return ResourceReadinessResponse(**readiness.to_dict())
+
 @router.get("/performance", response_model=GrowthPerformanceResponse)
 async def get_growth_performance(
     project_id: UUID,
@@ -1849,3 +2538,15 @@ async def sync_market_intelligence_recommendations(
         report=MarketIntelligenceResponse(**report.to_dict()),
         recommendations_saved=saved,
     )
+
+
+
+
+
+
+
+
+
+
+
+

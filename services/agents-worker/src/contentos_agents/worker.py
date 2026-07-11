@@ -2,12 +2,10 @@
 
 from contentos_agents.handlers.ai_director import AiDirectorAgentHandler
 from contentos_agents.handlers.analytics import AnalyticsAgentHandler
-from contentos_agents.handlers.asset_collector import AssetCollectorAgentHandler
 from contentos_agents.handlers.asset_index import AssetIndexAgentHandler
 from contentos_agents.handlers.asset_search import AssetSearchAgentHandler
 from contentos_agents.handlers.auto_retry import AutoRetryAgentHandler
 from contentos_agents.handlers.channel_analyzer import ChannelAnalyzerAgentHandler
-from contentos_agents.handlers.clip_research import ClipResearchAgentHandler
 from contentos_agents.handlers.competitor_analyzer import CompetitorAnalyzerAgentHandler
 from contentos_agents.handlers.content_intelligence import ContentIntelligenceAgentHandler
 from contentos_agents.handlers.content_score import ContentScoreAgentHandler
@@ -76,8 +74,6 @@ HANDLERS = {
     "publisher": PublisherAgentHandler(),
     "multi_content": MultiContentAgentHandler(),
     "multi_content_video": MultiContentVideoAgentHandler(),
-    "clip_research": ClipResearchAgentHandler(),
-    "asset_collector": AssetCollectorAgentHandler(),
     "asset_index": AssetIndexAgentHandler(),
     "media_analyze": MediaAnalyzeAgentHandler(),
     "asset_search": AssetSearchAgentHandler(),

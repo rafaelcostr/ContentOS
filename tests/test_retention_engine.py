@@ -67,7 +67,7 @@ def test_extract_retention_prefers_retention_report():
 
 def test_v5_autopilot_retention_after_quality():
     steps = PipelineStep.v5_media_autopilot_ordered()
-    assert len(steps) == 18
+    assert len(steps) == 16
     assert steps.index(PipelineStep.QUALITY) + 1 == steps.index(PipelineStep.RETENTION)
 
 

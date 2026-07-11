@@ -77,8 +77,8 @@ def test_v5_queues_mapped_once():
         "contentos.ai_director",
         "contentos.creative_memory",
         "contentos.media_analyze",
-        "contentos.asset_collector",
-        "contentos.clip_research",
+        "contentos.asset_index",
+        "contentos.asset_search",
     ]
     for q in v5_queues:
         assert q in v5, q

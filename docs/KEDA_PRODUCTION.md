@@ -7,7 +7,7 @@ Autoscaling de workers Celery por profundidade de fila Redis (KEDA `redis` scale
 | Deployment | Pool | Filas | Concurrency | KEDA triggers |
 |------------|------|-------|-------------|---------------|
 | `agents-worker-v5-quality` | v5-quality | retention, seo, ai_director, creative_memory, quality, video_review, auto_retry, content_score | 2 | retention, seo, ai_director, creative_memory |
-| `agents-worker-v5-media` | v5-media | clip_research, asset_collector, asset_index, media_analyze, asset_search | 2 | media_analyze, asset_collector, clip_research |
+| `agents-worker-v5-media` | v5-media | asset_index, media_analyze, asset_search | 2 | media_analyze, asset_index, asset_search |
 
 Filas de qualidade foram **removidas** do pool `general` para evitar contenção e permitir escala independente.
 

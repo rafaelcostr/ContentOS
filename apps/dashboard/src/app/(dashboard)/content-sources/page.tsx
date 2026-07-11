@@ -16,9 +16,9 @@ export default function ContentSourcesPage() {
   return (
     <div className="p-8">
       <header className="mb-8">
-        <h1 className="text-2xl font-bold tracking-tight">Content Sources</h1>
+        <h1 className="text-2xl font-bold tracking-tight">Biblioteca de mídia</h1>
         <p className="text-sm text-muted-foreground">
-          Fontes de mídia plugáveis — V2.10 Clip Research + V5.0 Pexels/Pixabay
+          Fontes locais consumidas pelo ContentOS. Download externo fica no Media Collector.
         </p>
       </header>
 
@@ -48,19 +48,19 @@ export default function ContentSourcesPage() {
 
       <Card className="mt-8">
         <CardHeader>
-          <CardTitle>Pipeline V2 (Clip Research)</CardTitle>
+          <CardTitle>Integração Media Collector</CardTitle>
         </CardHeader>
         <CardContent>
           <pre className="overflow-x-auto rounded-md bg-muted p-4 font-mono text-xs">
-{`# Ativar após step scene (não bloqueia pipeline V1)
-ENABLE_V2_CLIP_PIPELINE=true
-CONTENT_SOURCES_ENABLED=pexels,pixabay,local_library,own_library
-PEXELS_API_KEY=...
-PIXABAY_API_KEY=...
-MEDIA_COLLECT_TOP_N=3
+{`# ContentOS só consome biblioteca local
+CONTENT_SOURCES_ENABLED=local_library,own_library
 
-# Fluxo async:
-scene → clip_research → asset_collector → asset_search → takes usa assets coletados`}
+# Media Collector baixa e envia:
+POST /api/v1/assets/takes/upload
+  theme + label + arquivo → MinIO takes/ + Postgres
+
+# Pipeline:
+scene → asset_index → media_analyze → asset_search → takes → editor`}
           </pre>
         </CardContent>
       </Card>

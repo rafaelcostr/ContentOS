@@ -72,7 +72,7 @@ spec:
         name: redis-trigger-auth
       metadata:
         address: redis:6379
-        listName: contentos.asset_collector
+        listName: contentos.asset_index
         listLength: "3"
         databaseIndex: "0"
     - type: redis
@@ -80,6 +80,6 @@ spec:
         name: redis-trigger-auth
       metadata:
         address: redis:6379
-        listName: contentos.clip_research
+        listName: contentos.asset_search
         listLength: "3"
         databaseIndex: "0"

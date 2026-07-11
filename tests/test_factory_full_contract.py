@@ -21,10 +21,12 @@ def test_factory_full_sources_share_one_step_order():
     template = get_builtin("factory-full")
 
     assert template is not None
-    assert len(steps) == 31
+    assert len(steps) == 29
     assert FACTORY_FULL_STEPS == steps
     assert template["steps"] == steps
     assert [step.value for step in executable_factory_steps()] == steps
+    assert "clip_research" not in steps
+    assert "asset_collector" not in steps
 
 
 def test_factory_full_steps_have_queues_handlers_and_events():
@@ -50,7 +52,6 @@ def test_factory_full_template_enables_required_factory_features():
     config = template["config"]
 
     expected_flags = [
-        "enable_clip_pipeline",
         "enable_media_analyze",
         "enable_take_recommendation",
         "enable_thumbnail",
@@ -67,3 +68,4 @@ def test_factory_full_template_enables_required_factory_features():
 
     disabled = [flag for flag in expected_flags if config.get(flag) is not True]
     assert disabled == []
+    assert "enable_clip_pipeline" not in config

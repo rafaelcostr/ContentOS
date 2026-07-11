@@ -30,6 +30,5 @@ data:
   EVENT_STREAM_KEY: contentos:stream:events
   ENABLE_ANALYTICS_AI: "true"
   ENABLE_THUMBNAIL: "false"
-  ENABLE_V2_CLIP_PIPELINE: "false"
-  CONTENT_SOURCES_ENABLED: pexels,pixabay,local_library,own_library
+  CONTENT_SOURCES_ENABLED: local_library,own_library
   PLUGINS_ROOT: /app/plugins

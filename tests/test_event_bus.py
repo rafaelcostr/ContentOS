@@ -114,8 +114,6 @@ def test_from_agent_callback_quality_failed():
 
 def test_v2_steps_map_to_domain_events():
     expected = {
-        "clip_research": CLIP_RESEARCH_FINISHED,
-        "asset_collector": ASSETS_READY,
         "asset_index": ASSET_INDEX_FINISHED,
         "media_analyze": MEDIA_ANALYZE_FINISHED,
         "asset_search": ASSET_SEARCH_FINISHED,

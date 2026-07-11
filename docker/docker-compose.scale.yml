@@ -30,7 +30,7 @@ services:
     extends:
       file: docker-compose.yml
       service: agents-worker
-    command: celery -A contentos_agents.worker worker -l info -Q contentos.clip_research,contentos.asset_collector,contentos.asset_index,contentos.media_analyze,contentos.asset_search -c 2
+    command: celery -A contentos_agents.worker worker -l info -Q contentos.asset_index,contentos.media_analyze,contentos.asset_search -c 2
 
   agents-worker:
     command: celery -A contentos_agents.worker worker -l info -Q contentos.scene,contentos.takes,contentos.voice,contentos.subtitle,contentos.knowledge_base,contentos.publisher,contentos.thumbnail,contentos.analytics,contentos.learning,contentos.content_intelligence,contentos.multi_content,contentos.multi_content_video -c 2

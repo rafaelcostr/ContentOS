@@ -32,8 +32,6 @@ celery_app.config_from_object(
             "contentos.publisher.*": {"queue": "contentos.publisher"},
             "contentos.multi_content.*": {"queue": "contentos.multi_content"},
             "contentos.multi_content_video.*": {"queue": "contentos.multi_content_video"},
-            "contentos.clip_research.*": {"queue": "contentos.clip_research"},
-            "contentos.asset_collector.*": {"queue": "contentos.asset_collector"},
             "contentos.asset_index.*": {"queue": "contentos.asset_index"},
             "contentos.media_analyze.*": {"queue": "contentos.media_analyze"},
             "contentos.asset_search.*": {"queue": "contentos.asset_search"},

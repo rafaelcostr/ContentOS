@@ -43,7 +43,7 @@ def test_v5_media_autopilot_template_exists():
     tpl = get_builtin("v5-media-autopilot")
     assert tpl is not None
     assert tpl["name"] == "v5-media-autopilot"
-    assert len(tpl["steps"]) == 18
+    assert len(tpl["steps"]) == 16
 
 
 def test_v5_media_autopilot_step_order():
@@ -54,6 +54,8 @@ def test_v5_media_autopilot_step_order():
     media_idx = expected.index("media_analyze")
     assert expected[media_idx - 1] == "asset_index"
     assert expected[media_idx + 1] == "asset_search"
+    assert "clip_research" not in expected
+    assert "asset_collector" not in expected
 
 
 def test_engine_queue_map_covers_v5_steps():
@@ -65,7 +67,7 @@ def test_engine_queue_map_covers_v5_steps():
 
 def test_v5_config_enables_media_pipeline():
     cfg = get_builtin("v5-media-autopilot")["config"]
-    assert cfg["enable_clip_pipeline"] is True
+    assert "enable_clip_pipeline" not in cfg
     assert cfg["enable_media_analyze"] is True
     assert cfg["enable_take_recommendation"] is True
     assert cfg.get("default_topic_hint") == "GTA 6"

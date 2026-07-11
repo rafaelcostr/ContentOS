@@ -79,6 +79,15 @@ def build_growth_context_json(
         "planned_for": calendar_item.get("planned_for"),
     }
 
+    if metadata.get("media_strategy"):
+        context["media_strategy"] = metadata["media_strategy"]
+
+    if metadata.get("creative_direction"):
+        context["creative_direction"] = metadata["creative_direction"]
+
+    if metadata.get("cost_decision"):
+        context["cost_decision"] = metadata["cost_decision"]
+
     if strategy and strategy.cadence.get("posting_hours"):
         context["suggested_posting_hours"] = strategy.cadence["posting_hours"]
 

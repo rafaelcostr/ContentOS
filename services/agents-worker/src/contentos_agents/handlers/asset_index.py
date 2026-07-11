@@ -21,7 +21,7 @@ class AssetIndexAgentHandler(BaseAgentHandler):
         logs.append(f"Tagged {indexed} assets in database")
 
         if asset_ids and indexed == 0:
-            logs.append("WARN: no Asset rows found — check asset_collector persistence")
+            logs.append("WARN: no Asset rows found — ensure Media Collector uploaded takes")
 
         return AgentTaskOutput(
             job_id=task_input.job_id,

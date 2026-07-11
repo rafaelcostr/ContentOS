@@ -61,14 +61,14 @@ def test_merge_runs_learning_when_missing(monkeypatch):
 
 def test_factory_full_includes_creative_memory():
     steps = PipelineStep.factory_full_ordered()
-    assert len(steps) == 31
+    assert len(steps) == 29
     assert steps.index(PipelineStep.KNOWLEDGE_BASE) + 1 == steps.index(PipelineStep.CREATIVE_MEMORY)
     assert steps.index(PipelineStep.CREATIVE_MEMORY) + 1 == steps.index(PipelineStep.ANALYTICS)
 
 
 def test_v5_autopilot_includes_creative_memory():
     steps = PipelineStep.v5_media_autopilot_ordered()
-    assert len(steps) == 18
+    assert len(steps) == 16
     assert steps.index(PipelineStep.SEO) + 1 == steps.index(PipelineStep.CREATIVE_MEMORY)
     assert steps.index(PipelineStep.CREATIVE_MEMORY) + 1 == steps.index(PipelineStep.PUBLISHER)
 

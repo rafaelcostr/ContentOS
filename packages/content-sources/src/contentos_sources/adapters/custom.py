@@ -1,4 +1,8 @@
-"""Custom JSON-configured source."""
+"""Custom JSON-configured source — metadata catalog only.
+
+Remote HTTP download was removed. Use Media Collector to acquire media and
+upload via POST /api/v1/assets/takes/upload (or MinIO takes/).
+"""
 
 from __future__ import annotations
 
@@ -37,7 +41,7 @@ class CustomSource:
                     candidate_id=cid,
                     title=title,
                     score=score,
-                    reason="Custom source entry",
+                    reason="Custom source entry (catalog only — download via Media Collector)",
                     metadata=entry,
                 )
             )
@@ -45,29 +49,11 @@ class CustomSource:
         return candidates[:10]
 
     async def fetch(self, candidate_id: str) -> SourceAsset:
-        for entry in self._entries():
-            if str(entry.get("id", entry.get("title"))) == candidate_id:
-                url = entry.get("url", "")
-                if url:
-                    import httpx
-
-                    async with httpx.AsyncClient(timeout=60.0) as client:
-                        resp = await client.get(url)
-                        resp.raise_for_status()
-                        import hashlib
-
-                        data = resp.content
-                        return SourceAsset(
-                            source_id=self.source_id,
-                            candidate_id=candidate_id,
-                            data=data,
-                            filename=entry.get("filename", "custom_clip.mp4"),
-                            content_type=resp.headers.get("content-type", "video/mp4"),
-                            metadata=entry,
-                            sha256=hashlib.sha256(data).hexdigest(),
-                        )
-        raise ValueError(f"Custom source entry '{candidate_id}' not found")
+        raise NotImplementedError(
+            "External media download was moved to Media Collector. "
+            f"Upload asset '{candidate_id}' via POST /api/v1/assets/takes/upload."
+        )
 
     async def health(self) -> SourceHealth:
         entries = self._entries()
-        return SourceHealth(self.source_id, True, f"{len(entries)} custom entries configured")
+        return SourceHealth(self.source_id, True, f"{len(entries)} custom catalog entries (no remote download)")

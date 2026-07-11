@@ -188,7 +188,7 @@ services:
       - USE_AI_GATEWAY=true
       - AI_GATEWAY_URL=http://ai-gateway:8020
       - AI_GATEWAY_FALLBACK=${AI_GATEWAY_FALLBACK:-true}
-      - CONTENT_SOURCES_ENABLED=${CONTENT_SOURCES_ENABLED:-pexels,pixabay,local_library,own_library}
+      - CONTENT_SOURCES_ENABLED=${CONTENT_SOURCES_ENABLED:-local_library,own_library}
       - PROMPTS_DIR=/app/packages/prompts/prompts
       - PROMPTS_OVERRIDE_DIR=/data/prompts
       - USE_AI_CACHE=${USE_AI_CACHE:-true}

@@ -20,8 +20,6 @@ STEP_EXTERNAL_DEPS: dict[str, str] = {
     "scene": "ollama",
     "storyboard": "ollama",
     "scene_director": "rules",
-    "clip_research": "content-sources",
-    "asset_collector": "content-sources+minio",
     "asset_index": "postgres+minio",
     "media_analyze": "ollama+minio",
     "asset_search": "postgres",
@@ -105,7 +103,7 @@ def format_factory_truth_markdown() -> str:
     lines = [
         "# Factory Truth Table",
         "",
-        "Tabela única da linha de montagem `factory-full` (31 steps executáveis).",
+        "Tabela única da linha de montagem `factory-full` (29 steps executáveis).",
         "",
         "Fontes de verdade:",
         "",

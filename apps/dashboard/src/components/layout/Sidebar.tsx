@@ -25,7 +25,6 @@ import {
   Package,
   Plug,
   Radio,
-  ScanSearch,
   ScrollText,
   Share2,
   Settings,
@@ -74,9 +73,7 @@ const sections: { title: string; items: NavItem[] }[] = [
       { href: "/assets", label: "Assets", icon: Images },
       { href: "/voice-studio", label: "Voice Studio", icon: Mic },
       { href: "/storage", label: "Armazenamento", icon: HardDrive },
-      { href: "/content-sources", label: "Fontes", icon: Library },
-      { href: "/clip-research", label: "Clip Research", icon: ScanSearch },
-      { href: "/asset-collector", label: "Coletor", icon: Package },
+      { href: "/content-sources", label: "Biblioteca", icon: Library },
     ],
   },
   {

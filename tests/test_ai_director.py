@@ -81,14 +81,14 @@ def test_resolve_director_retry_from_fallback():
 
 def test_factory_full_includes_ai_director():
     steps = PipelineStep.factory_full_ordered()
-    assert len(steps) == 31
+    assert len(steps) == 29
     assert steps.index(PipelineStep.CONTENT_SCORE) + 1 == steps.index(PipelineStep.AI_DIRECTOR)
     assert steps.index(PipelineStep.AI_DIRECTOR) + 1 == steps.index(PipelineStep.CONTENT_INTELLIGENCE)
 
 
 def test_v5_autopilot_includes_ai_director():
     steps = PipelineStep.v5_media_autopilot_ordered()
-    assert len(steps) == 18
+    assert len(steps) == 16
     assert steps.index(PipelineStep.QUALITY) + 1 == steps.index(PipelineStep.RETENTION)
     assert steps.index(PipelineStep.RETENTION) + 1 == steps.index(PipelineStep.AI_DIRECTOR)
     assert steps.index(PipelineStep.AI_DIRECTOR) + 1 == steps.index(PipelineStep.SEO)

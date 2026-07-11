@@ -25,7 +25,6 @@ _DEFAULTS: dict[str, dict[str, str]] = {
     "publisher": {"type": "text", "provider": "ollama"},
     "analytics": {"type": "text", "provider": "ollama"},
     "thumbnail": {"type": "image", "provider": "local"},
-    "clip_research": {"type": "text", "provider": "ollama"},
     "voice": {"type": "speech", "provider": "piper"},
     "subtitle": {"type": "subtitle", "provider": "local"},
 }

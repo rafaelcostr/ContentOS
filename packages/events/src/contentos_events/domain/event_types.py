@@ -139,8 +139,6 @@ STEP_TO_DOMAIN_EVENT: dict[str, str] = {
     "storyboard": STORYBOARD_FINISHED,
     "scene_director": SCENE_DIRECTOR_FINISHED,
     "scene": SCENE_CREATED,
-    "clip_research": CLIP_RESEARCH_FINISHED,
-    "asset_collector": ASSETS_READY,
     "asset_index": ASSET_INDEX_FINISHED,
     "media_analyze": MEDIA_ANALYZE_FINISHED,
     "asset_search": ASSET_SEARCH_FINISHED,

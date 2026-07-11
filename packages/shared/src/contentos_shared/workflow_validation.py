@@ -39,7 +39,7 @@ def _tier(key: str) -> str:
         return "v5"
     if key == "content_graph":
         return "v4"
-    if key in ("clip_research", "asset_collector", "asset_index", "asset_search", "thumbnail", "analytics"):
+    if key in ("asset_index", "asset_search", "thumbnail", "analytics"):
         return "v2"
     return "core"
 

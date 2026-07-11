@@ -25,10 +25,9 @@ BUILTIN_TEMPLATES: dict[str, dict] = {
     },
     "v2-full": {
         "name": "v2-full",
-        "description": "V1 pipeline plus V2 async agents (clip research, thumbnail, analytics).",
+        "description": "V1 pipeline plus V2 async agents (thumbnail, analytics). Media via Media Collector library.",
         "steps": V1_STEPS,
         "config": {
-            "enable_clip_pipeline": True,
             "enable_thumbnail": True,
             "enable_analytics_ai": True,
         },
@@ -36,10 +35,9 @@ BUILTIN_TEMPLATES: dict[str, dict] = {
     },
     "v2-dynamic": {
         "name": "v2-dynamic",
-        "description": "Full 16-step V2 pipeline with clip research, media analyze, asset search, thumbnail and analytics.",
+        "description": "V2 pipeline matching project library (Media Collector) with media analyze, asset search, thumbnail and analytics.",
         "steps": V2_DYNAMIC_STEPS,
         "config": {
-            "enable_clip_pipeline": True,
             "enable_media_analyze": True,
         },
         "is_default": False,
@@ -127,7 +125,6 @@ BUILTIN_TEMPLATES: dict[str, dict] = {
             "enable_script_reviewer": True,
             "enable_storyboard": True,
             "enable_scene_director": True,
-            "enable_clip_pipeline": True,
             "enable_thumbnail": True,
             "enable_video_reviewer": True,
             "enable_auto_retry": True,
@@ -148,10 +145,9 @@ BUILTIN_TEMPLATES: dict[str, dict] = {
     },
     "v5-media-autopilot": {
         "name": "v5-media-autopilot",
-        "description": "V5 media autopilot — licensed B-roll, media analyze, take recommendation, auto edit to MP4.",
+        "description": "V5 media autopilot — library from Media Collector, media analyze, take recommendation, auto edit to MP4.",
         "steps": V5_MEDIA_AUTOPILOT_STEPS,
         "config": {
-            "enable_clip_pipeline": True,
             "enable_media_analyze": True,
             "enable_take_recommendation": True,
             "enable_v5_media_autopilot": True,
@@ -160,7 +156,7 @@ BUILTIN_TEMPLATES: dict[str, dict] = {
             "enable_ai_director": True,
             "enable_creative_memory": True,
             "default_topic_hint": "GTA 6",
-            "content_sources": ["pexels", "pixabay", "own_library", "local_library"],
+            "content_sources": ["own_library", "local_library"],
         },
         "is_default": False,
     },

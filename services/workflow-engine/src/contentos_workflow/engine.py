@@ -89,8 +89,6 @@ STEP_QUEUE_MAP: dict[str, str] = {
     "publisher": "contentos.publisher",
     "multi_content": "contentos.multi_content",
     "multi_content_video": "contentos.multi_content_video",
-    "clip_research": "contentos.clip_research",
-    "asset_collector": "contentos.asset_collector",
     "asset_index": "contentos.asset_index",
     "media_analyze": "contentos.media_analyze",
     "asset_search": "contentos.asset_search",
@@ -216,8 +214,6 @@ class WorkflowEngine:
                     type="step.completed", pipeline_id=pipeline.id, job_id=job.id, step=job.step, status="completed"
                 )
             )
-            if job.step == "scene" and not await self._pipeline_has_step(pipeline, "clip_research"):
-                await self._dispatch_clip_pipeline(pipeline)
             if job.step == "publisher" and output_data:
                 await self._create_video_record(pipeline, output_data)
             if (
@@ -347,12 +343,6 @@ class WorkflowEngine:
     def _env_enabled(self, env_var: str, default: str = "false") -> bool:
         return os.getenv(env_var, default).lower() in ("true", "1", "yes")
 
-    async def _is_clip_pipeline_enabled(self, pipeline: Pipeline) -> bool:
-        cfg = await self._workflow_config(pipeline)
-        if "enable_clip_pipeline" in cfg:
-            return bool(cfg["enable_clip_pipeline"])
-        return self._env_enabled("ENABLE_V2_CLIP_PIPELINE")
-
     async def _is_thumbnail_enabled(self, pipeline: Pipeline) -> bool:
         cfg = await self._workflow_config(pipeline)
         if "enable_thumbnail" in cfg:
@@ -370,15 +360,6 @@ class WorkflowEngine:
         if "enable_learning" in cfg:
             return bool(cfg["enable_learning"])
         return self._env_enabled("LEARNING_ENGINE_ENABLED", default="true")
-
-    async def _dispatch_clip_pipeline(self, pipeline: Pipeline) -> None:
-        """Optional V2 clip research chain after scene (non-blocking)."""
-        if not await self._is_clip_pipeline_enabled(pipeline):
-            return
-        from contentos_workflow.tasks import dispatch_async_agent
-
-        payload = await self._build_full_payload(pipeline)
-        dispatch_async_agent("clip_research", str(pipeline.id), str(pipeline.project_id), payload)
 
     async def _dispatch_v2_async_agents(self, pipeline: Pipeline) -> None:
         """Enqueue optional V2 async agents after main pipeline completes (non-blocking)."""

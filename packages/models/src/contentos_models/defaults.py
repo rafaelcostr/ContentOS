@@ -19,7 +19,6 @@ DEFAULT_AGENT_MODELS: dict[str, dict[str, str]] = {
     "publisher": {"provider_type": "text", "provider": "ollama", "model_env": "OLLAMA_MODEL", "default_model": "qwen2.5:7b"},
     "analytics": {"provider_type": "text", "provider": "ollama", "model_env": "OLLAMA_MODEL", "default_model": "qwen2.5:7b"},
     "thumbnail": {"provider_type": "text", "provider": "ollama", "model_env": "OLLAMA_MODEL", "default_model": "qwen2.5:7b"},
-    "clip_research": {"provider_type": "text", "provider": "ollama", "model_env": "OLLAMA_MODEL", "default_model": "qwen2.5:7b"},
     "knowledge_base": {"provider_type": "compute", "provider": "postgres", "model_env": "", "default_model": "kb-indexer"},
     "voice": {"provider_type": "speech", "provider": "piper", "model_env": "PIPER_VOICE", "default_model": "pt_BR-faber-medium"},
     "subtitle": {"provider_type": "subtitle", "provider": "local", "model_env": "WHISPER_MODEL", "default_model": "large-v3"},
@@ -49,7 +48,6 @@ EDITABLE_AGENTS = {
     "subtitle",
     "analytics",
     "thumbnail",
-    "clip_research",
 }
 
 

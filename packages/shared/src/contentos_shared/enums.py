@@ -20,9 +20,7 @@ class PipelineStep(str, enum.Enum):
     EDITOR = "editor"
     QUALITY = "quality"
     PUBLISHER = "publisher"
-    # V2 pipeline extensions
-    CLIP_RESEARCH = "clip_research"
-    ASSET_COLLECTOR = "asset_collector"
+    # V2 pipeline extensions (external download owned by Media Collector)
     ASSET_INDEX = "asset_index"
     MEDIA_ANALYZE = "media_analyze"
     ASSET_SEARCH = "asset_search"
@@ -75,14 +73,12 @@ class PipelineStep(str, enum.Enum):
 
     @classmethod
     def v2_ordered(cls) -> list["PipelineStep"]:
-        """Full V2 pipeline — 16 synchronous steps (V5.0.3 + media_analyze)."""
+        """Full V2 pipeline — library match + media_analyze (no external download)."""
         return cls._insert_media_analyze(
             [
             cls.RESEARCH,
             cls.SCRIPT,
             cls.SCENE,
-            cls.CLIP_RESEARCH,
-            cls.ASSET_COLLECTOR,
             cls.ASSET_INDEX,
             cls.ASSET_SEARCH,
             cls.TAKES,
@@ -157,8 +153,6 @@ class PipelineStep(str, enum.Enum):
             cls.SCENE,
             cls.STORYBOARD,
             cls.SCENE_DIRECTOR,
-            cls.CLIP_RESEARCH,
-            cls.ASSET_COLLECTOR,
             cls.ASSET_INDEX,
             cls.ASSET_SEARCH,
             cls.TAKES,
@@ -184,14 +178,12 @@ class PipelineStep(str, enum.Enum):
 
     @classmethod
     def v5_media_autopilot_ordered(cls) -> list["PipelineStep"]:
-        """V5 media autopilot — tema → B-roll licenciado → take → MP4 (18 steps)."""
+        """V5 media autopilot — tema → biblioteca (Media Collector) → take → MP4."""
         return cls._insert_media_analyze(
             [
                 cls.RESEARCH,
                 cls.SCRIPT,
                 cls.SCENE,
-                cls.CLIP_RESEARCH,
-                cls.ASSET_COLLECTOR,
                 cls.ASSET_INDEX,
                 cls.ASSET_SEARCH,
                 cls.TAKES,
@@ -211,8 +203,6 @@ class PipelineStep(str, enum.Enum):
 class AsyncAgentStep(str, enum.Enum):
     """V2 async agents — outside the V1 9-step pipeline."""
 
-    CLIP_RESEARCH = "clip_research"
-    ASSET_COLLECTOR = "asset_collector"
     THUMBNAIL = "thumbnail"
     ANALYTICS = "analytics"
     LEARNING = "learning"

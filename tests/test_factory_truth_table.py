@@ -8,7 +8,7 @@ from contentos_shared.media_production import render_allow_placeholder, require_
 
 def test_factory_truth_row_count():
     rows = build_factory_truth_rows()
-    assert len(rows) == 31
+    assert len(rows) == 29
     assert rows[0].step == "research"
     assert rows[-1].step == "publisher"
 
@@ -30,7 +30,7 @@ def test_factory_truth_markdown_contains_table():
     md = format_factory_truth_markdown()
     assert "| `research` |" in md
     assert "| `publisher` |" in md
-    assert "31 steps" in md
+    assert "29 steps" in md
 
 
 def test_render_allow_placeholder_defaults(monkeypatch):

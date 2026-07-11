@@ -47,6 +47,11 @@ def test_autonomous_calendar_proposes_missing_slots():
     assert data["calendar_items"][0]["metadata"]["platform"] == "youtube"
     assert data["calendar_items"][0]["metadata"]["objective_status"] == "linked"
     assert data["calendar_items"][0]["metadata"]["objective_path"]
+    assert data["calendar_items"][0]["metadata"]["media_strategy"]["asset_collector_policy"]["min_duration_seconds"] == 30
+    assert data["calendar_items"][0]["metadata"]["creative_direction"]["scene_brief"]
+    assert data["calendar_items"][0]["metadata"]["creative_direction"]["editor_brief"]
+    assert data["calendar_items"][0]["metadata"]["cost_decision"]["status"] in {"ready", "approval_required", "blocked"}
+    assert data["calendar_items"][0]["metadata"]["cost_decision"]["total_credit_cost"] >= 1
 
 
 def test_autonomous_calendar_preserves_existing_topics():

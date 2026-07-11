@@ -19,7 +19,8 @@ def test_factory_line_has_requested_assembly_order():
     assert keys[0] == "project"
     assert keys[1] == "theme"
     assert keys.index("research") < keys.index("script")
-    assert keys.index("scene_director") < keys.index("clip_research")
+    assert keys.index("scene_director") < keys.index("media_collector")
+    assert keys.index("media_collector") < keys.index("asset_manager")
     assert keys.index("media_analyze") < keys.index("asset_search")
     assert keys.index("editor") < keys.index("retention")
     assert keys.index("auto_retry") < keys.index("content_score")
@@ -30,14 +31,14 @@ def test_factory_line_has_requested_assembly_order():
 
 def test_factory_map_matches_executable_factory_full_pipeline():
     assert executable_factory_steps() == PipelineStep.factory_full_ordered()
-    assert len(executable_factory_steps()) == 31
+    assert len(executable_factory_steps()) == 29
 
 
 def test_factory_map_doc_matches_quality_retention_order():
     root = Path(__file__).resolve().parents[1]
     doc = (root / "docs" / "FACTORY_MAP.md").read_text(encoding="utf-8")
-    quality = "| 21 | Quality AI |"
-    retention = "| 22 | Retention Engine |"
+    quality = "| 20 | Quality AI |"
+    retention = "| 21 | Retention Engine |"
     assert quality in doc
     assert retention in doc
     assert doc.index(quality) < doc.index(retention)

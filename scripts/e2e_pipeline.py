@@ -258,12 +258,12 @@ async def main() -> int:
                         icon = "OK" if src.get("healthy") else "FAIL"
                         print(f"  {icon} content-source/{src.get('source_id')}: {src.get('message', '')}")
                     if not any(
-                        s.get("source_id") in ("pexels", "pixabay") and s.get("healthy")
+                        s.get("source_id") in ("local_library", "own_library") and s.get("healthy")
                         for s in cs.json().get("sources", [])
                     ):
                         print(
-                            "\nWARN: No healthy Pexels/Pixabay — pipeline may use placeholders. "
-                            "Set PEXELS_API_KEY / PIXABAY_API_KEY in .env and rebuild workers.",
+                            "\nWARN: No healthy local library — Media Collector should upload takes "
+                            "via POST /api/v1/assets/takes/upload before production pipelines.",
                             file=sys.stderr,
                         )
 
